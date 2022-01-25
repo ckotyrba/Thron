@@ -1,0 +1,143 @@
+﻿{
+  "frames": [
+    {
+      "gameInformation": "",
+      "view": "\n0\n1\n7 8\n1\n1\n23 4\n",
+      "keyframe": true,
+      "agentId": -1
+    },
+    {
+      "gameInformation": "$0 plays UP.\n",
+      "stdout": "UP\n",
+      "stderr": "debug:^2 0debug:$\ndebug:^7 8 7 8debug:$\ndebug:^23 4 23 4debug:$\nRound:0",
+      "view": "\n0\n2\n7 8\n7 7\n1\n1\n23 4\n",
+      "keyframe": false,
+      "agentId": 0
+    },
+    {
+      "gameInformation": "$1 plays LEFT.\n",
+      "stdout": "LEFT\n",
+      "view": "\n0\n2\n7 8\n7 7\n1\n2\n23 4\n22 4\n",
+      "keyframe": true,
+      "agentId": 1
+    },
+    {
+      "gameInformation": "$0 plays UP.\n",
+      "stdout": "UP\n",
+      "stderr": "debug:^2 0debug:$\ndebug:^7 8 7 7debug:$\ndebug:^23 4 22 4debug:$\nRound:1",
+      "view": "\n0\n3\n7 8\n7 7\n7 6\n1\n2\n23 4\n22 4\n",
+      "keyframe": false,
+      "agentId": 0
+    },
+    {
+      "gameInformation": "$1 plays LEFT.\n",
+      "stdout": "LEFT\n",
+      "view": "\n0\n3\n7 8\n7 7\n7 6\n1\n3\n23 4\n22 4\n21 4\n",
+      "keyframe": true,
+      "agentId": 1
+    },
+    {
+      "gameInformation": "$0 plays UP.\n",
+      "stdout": "UP\n",
+      "stderr": "debug:^2 0debug:$\ndebug:^7 8 7 6debug:$\ndebug:^23 4 21 4debug:$\nRound:2",
+      "view": "\n0\n4\n7 8\n7 7\n7 6\n7 5\n1\n3\n23 4\n22 4\n21 4\n",
+      "keyframe": false,
+      "agentId": 0
+    },
+    {
+      "gameInformation": "$1 plays LEFT.\n",
+      "stdout": "LEFT\n",
+      "view": "\n0\n4\n7 8\n7 7\n7 6\n7 5\n1\n4\n23 4\n22 4\n21 4\n20 4\n",
+      "keyframe": true,
+      "agentId": 1
+    },
+    {
+      "gameInformation": "$0 plays UP.\n",
+      "stdout": "UP\n",
+      "stderr": "debug:^2 0debug:$\ndebug:^7 8 7 5debug:$\ndebug:^23 4 20 4debug:$\nRound:3",
+      "view": "\n0\n5\n7 8\n7 7\n7 6\n7 5\n7 4\n1\n4\n23 4\n22 4\n21 4\n20 4\n",
+      "keyframe": false,
+      "agentId": 0
+    },
+    {
+      "gameInformation": "$1 plays LEFT.\n",
+      "stdout": "LEFT\n",
+      "view": "\n0\n5\n7 8\n7 7\n7 6\n7 5\n7 4\n1\n5\n23 4\n22 4\n21 4\n20 4\n19 4\n",
+      "keyframe": true,
+      "agentId": 1
+    },
+    {
+      "gameInformation": "$0 plays UP.\n",
+      "stdout": "UP\n",
+      "stderr": "debug:^2 0debug:$\ndebug:^7 8 7 4debug:$\ndebug:^23 4 19 4debug:$\nRound:4",
+      "view": "\n0\n6\n7 8\n7 7\n7 6\n7 5\n7 4\n7 3\n1\n5\n23 4\n22 4\n21 4\n20 4\n19 4\n",
+      "keyframe": false,
+      "agentId": 0
+    },
+    {
+      "gameInformation": "$1 plays LEFT.\n",
+      "stdout": "LEFT\n",
+      "view": "\n0\n6\n7 8\n7 7\n7 6\n7 5\n7 4\n7 3\n1\n6\n23 4\n22 4\n21 4\n20 4\n19 4\n18 4\n",
+      "keyframe": true,
+      "agentId": 1
+    },
+    {
+      "gameInformation": "$0 plays UP.\n",
+      "stdout": "UP\n",
+      "stderr": "debug:^2 0debug:$\ndebug:^7 8 7 3debug:$\ndebug:^23 4 18 4debug:$\nRound:5",
+      "view": "\n0\n7\n7 8\n7 7\n7 6\n7 5\n7 4\n7 3\n7 2\n1\n6\n23 4\n22 4\n21 4\n20 4\n19 4\n18 4\n",
+      "keyframe": false,
+      "agentId": 0
+    },
+    {
+      "gameInformation": "$1 plays LEFT.\n",
+      "stdout": "LEFT\n",
+      "view": "\n0\n7\n7 8\n7 7\n7 6\n7 5\n7 4\n7 3\n7 2\n1\n7\n23 4\n22 4\n21 4\n20 4\n19 4\n18 4\n17 4\n",
+      "keyframe": true,
+      "agentId": 1
+    },
+    {
+      "gameInformation": "$0 plays UP.\n",
+      "stdout": "UP\n",
+      "stderr": "debug:^2 0debug:$\ndebug:^7 8 7 2debug:$\ndebug:^23 4 17 4debug:$\nRound:6",
+      "view": "\n0\n8\n7 8\n7 7\n7 6\n7 5\n7 4\n7 3\n7 2\n7 1\n1\n7\n23 4\n22 4\n21 4\n20 4\n19 4\n18 4\n17 4\n",
+      "keyframe": false,
+      "agentId": 0
+    },
+    {
+      "gameInformation": "$1 plays LEFT.\n",
+      "stdout": "LEFT\n",
+      "view": "\n0\n8\n7 8\n7 7\n7 6\n7 5\n7 4\n7 3\n7 2\n7 1\n1\n8\n23 4\n22 4\n21 4\n20 4\n19 4\n18 4\n17 4\n16 4\n",
+      "keyframe": true,
+      "agentId": 1
+    },
+    {
+      "gameInformation": "$0 plays UP.\n",
+      "stdout": "UP\n",
+      "stderr": "debug:^2 0debug:$\ndebug:^7 8 7 1debug:$\ndebug:^23 4 16 4debug:$\nRound:7",
+      "view": "\n0\n9\n7 8\n7 7\n7 6\n7 5\n7 4\n7 3\n7 2\n7 1\n7 0\n1\n8\n23 4\n22 4\n21 4\n20 4\n19 4\n18 4\n17 4\n16 4\n",
+      "keyframe": false,
+      "agentId": 0
+    },
+    {
+      "gameInformation": "$1 plays LEFT.\n",
+      "stdout": "LEFT\n",
+      "view": "\n0\n9\n7 8\n7 7\n7 6\n7 5\n7 4\n7 3\n7 2\n7 1\n7 0\n1\n9\n23 4\n22 4\n21 4\n20 4\n19 4\n18 4\n17 4\n16 4\n15 4\n",
+      "keyframe": true,
+      "agentId": 1
+    },
+    {
+      "gameInformation": "¤RED¤$0 lost. Incorrect movement.§RED§\n",
+      "stdout": "UP\n",
+      "stderr": "debug:^2 0debug:$\ndebug:^7 8 7 0debug:$\ndebug:^23 4 15 4debug:$\nRound:8",
+      "view": "\n0\n0\n1\n9\n23 4\n22 4\n21 4\n20 4\n19 4\n18 4\n17 4\n16 4\n15 4\n",
+      "keyframe": false,
+      "agentId": 0
+    }
+  ],
+  "gameId": 604809897,
+  "refereeInput": "(7,8)(23,4)\n",
+  "scores": [ 90.0, 100.0 ],
+  "ranks": [ 1, 0 ],
+  "tooltips": [ "{\"turn\":17,\"text\":\"$0\",\"event\":0}" ]
+}

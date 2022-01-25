@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+		<TargetFramework>net48</TargetFramework>
+
+		<UseWindowsForms>true</UseWindowsForms>
+	</PropertyGroup>
+
+
+</Project>
