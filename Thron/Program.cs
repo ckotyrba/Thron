@@ -5,7 +5,7 @@ using System.Text;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-
+using System.Drawing;
 
 namespace Thron
 {
@@ -62,7 +62,8 @@ namespace Thron
                 Direction bestDirection = Direction.UP;
                 foreach (Direction direction in Enum.GetValues(typeof(Direction)))
                 {
-                    int fieldsBelongToPlayer = SimulateMoveAndGetPlayerFieldCount(currentX, currentY, Direction.DOWN);
+                    int fieldsBelongToPlayer = SimulateMoveAndGetPlayerFieldCount(currentX, currentY, direction);
+                    Console.Error.WriteLine($"{direction} bringt: {fieldsBelongToPlayer}");
                     if (fieldsBelongToPlayer > currentMax)
                     {
                         currentMax = fieldsBelongToPlayer;
@@ -86,22 +87,33 @@ namespace Thron
 
         private void UpdateField(int x0, int y0, int x1, int y1, int playerNumber)
         {
-            gameField.fields[x1, y1].Player = playerNumber;
+            gameField.fields[y1, x1].Player = playerNumber;
+            gameField.fields[y0, x0].Player = playerNumber;
         }
 
         private int SimulateMoveAndGetPlayerFieldCount(int currentX, int currentY, Direction direction)
         {
-            var gamefieldCopy = gameField.Copy();
-            int playerId = gameField.fields[currentX, currentY].Player.Value;
-
+            var copy = gameField.Copy();
+            int playerId = gameField.fields[currentY, currentX].Player.Value;
             var nextCoordinates = NextField(currentX, currentY, direction);
-            var nextField = gamefieldCopy.fields[nextCoordinates.newX, nextCoordinates.newY];
-            if (nextField.Player != null)
+            if (nextCoordinatesDeath(nextCoordinates))
                 return 0;
+            var nextField = copy.fields[nextCoordinates.newY, nextCoordinates.newX];
             nextField.Player = playerId;
-            var calc = new VoronoiCalculator(gamefieldCopy);
+            var calc = new VoronoiCalculator(copy);
             return calc.FieldsBelongToPlayer(playerId);
         }
+
+        private bool nextCoordinatesDeath((int newX, int newY) nextCoordinates)
+        {
+            bool outOfRange = nextCoordinates.newX < 0 || nextCoordinates.newX >= gameField.Width || nextCoordinates.newY < 0 || nextCoordinates.newY >= gameField.Height;
+            if (outOfRange)
+                return true;
+            bool playerOnField = gameField.fields[nextCoordinates.newY, nextCoordinates.newX].Player != null;
+            return playerOnField;
+
+        }
+
         private (int newX, int newY) NextField(int currentX, int currrentY, Direction direction)
         {
             switch (direction)
@@ -124,30 +136,33 @@ namespace Thron
     [Serializable]
     public class GameField
     {
-        public static int WIDTH = 30;
-        public static int HEIGHT = 20;
+        private const int WIDTH = 30;
+        private const int HEIGHT = 20;
 
-        public Field[,] fields = new Field[WIDTH, HEIGHT];
-        public GameField()
+        public Field[,] fields;
+        public int Width { get { return fields.GetLength(1); } }
+        public int Height { get { return fields.GetLength(0); } }
+        public GameField(int width = WIDTH, int height = HEIGHT)
         {
-            for (int x = 0; x < WIDTH; x++)
+            fields = new Field[height, width];
+            for (int x = 0; x < width; x++)
             {
-                for (int y = 0; y < HEIGHT; y++)
+                for (int y = 0; y < height; y++)
                 {
-                    fields[x, y] = new Field(x, y);
+                    fields[y, x] = new Field(x, y);
                 }
             }
         }
 
         public GameField Copy()
         {
-            var copy = new GameField();
-            for (int x = 0; x < WIDTH; x++)
+            var copy = new GameField(this.Width, this.Height);
+            for (int x = 0; x < Width; x++)
             {
-                for (int y = 0; y < HEIGHT; y++)
+                for (int y = 0; y < Height; y++)
                 {
-                    copy.fields[x, y] = new Field(x, y);
-                    copy.fields[x, y].Player = this.fields[x, y].Player;
+                    copy.fields[y, x] = new Field(x, y);
+                    copy.fields[y, x].Player = this.fields[y, x].Player;
                 }
             }
             return copy;
@@ -179,7 +194,6 @@ namespace Thron
     }
 
     [DebuggerDisplay("fields = {gameField}")]
-
     public class VoronoiCalculator
     {
         public GameField gameField;
@@ -192,28 +206,18 @@ namespace Thron
 
         private VoronoiCalculator CalcVoronoi()
         {
+            var takenFields = TakenFields();
             foreach (var field in gameField.fields)
             {
-                Console.Error.WriteLine($"BErechne: {field.X} {field.Y}");
-                Field minDistField = null;
-                foreach (var takenField in TakenFields())
+                var minDistFieldsGroup = takenFields.GroupBy(takenField => ManhattanDistance(field, takenField)).OrderBy(group => group.Key).First();
+                if (minDistFieldsGroup.Count() == 1)
                 {
-                    if (minDistField == null || ManhattanDistance(field, takenField) < ManhattanDistance(field, minDistField))
-                    {
-                        minDistField = takenField;
-                    }
-
-                    else if (minDistField != null && ManhattanDistance(field, takenField) == ManhattanDistance(field, minDistField))
-                    {
-                        // bei selber distanz, bekommt das noch keiner
-                        minDistField = null;
-                        break;
-                    }
+                    field.Player = minDistFieldsGroup.First().Player;
                 }
-                if (minDistField == null)
-                    field.Player = null;
                 else
-                    field.Player = minDistField.Player;
+                {
+                    field.Player = null;
+                }
             }
             return this;
         }
@@ -248,6 +252,50 @@ namespace Thron
             }
             return result;
         }
+    }
+
+    class GameFieldDebugProxy
+    {
+        private readonly GameField _gameFields;
+
+        public GameFieldDebugProxy(GameField scientist)
+        {
+            _gameFields = scientist;
+        }
+
+        public string Fields
+        {
+            get
+            {
+                string result = "";
+                for (int y = 0; y < _gameFields.Height; y++)
+                {
+                    for (int x = 0; x < _gameFields.Width; x++)
+                    {
+                        result += printField(_gameFields.fields[y, x]);
+                    }
+                    result += "<br>";
+                }
+
+                return result;
+            }
+        }
+
+        private string printField(Field field)
+        {
+            if (field.Player == null)
+                return ColorString("0", Color.Black);
+            else if (field.Player == 0)
+                return ColorString((field.Player + 1).ToString(), Color.Green);
+            else
+                return ColorString((field.Player + 1).ToString(), Color.Red);
+        }
+
+        private string ColorString(string str, Color color)
+        {
+            return $"<span style = \"color: {ColorTranslator.ToHtml(color)};\">{str}</span>";
+        }
+
     }
 
 }
