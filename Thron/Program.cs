@@ -28,6 +28,7 @@ namespace Thron
 
         private GameField gameField = new GameField();
         public static int Round = 0;
+        private List<Field> currentPlayerHeads;
 
         public void Play()
         {
@@ -36,6 +37,8 @@ namespace Thron
             // game loop
             while (true)
             {
+                Stopwatch stopwatch = Stopwatch.StartNew();
+                currentPlayerHeads = new List<Field>();
                 inputs = ReadConsole().Split(' ');
                 int N = int.Parse(inputs[0]); // total number of players (2 to 4).
                 int P = int.Parse(inputs[1]); // your player number (0 to 3).
@@ -54,23 +57,37 @@ namespace Thron
                         currentY = Y1;
                     }
                     UpdateField(X0, Y0, X1, Y1, i);
+                    currentPlayerHeads.Add(gameField.fields[Y1, X1]);
                 }
                 // Write an action using Console.WriteLine()
                 // To debug: Console.Error.WriteLine("Debug messages...");
 
-                int currentMax = SimulateMoveAndGetPlayerFieldCount(currentX, currentY, Direction.UP);
-                Direction bestDirection = Direction.UP;
-                foreach (Direction direction in Enum.GetValues(typeof(Direction)))
-                {
-                    int fieldsBelongToPlayer = SimulateMoveAndGetPlayerFieldCount(currentX, currentY, direction);
-                    Console.Error.WriteLine($"{direction} bringt: {fieldsBelongToPlayer}");
-                    if (fieldsBelongToPlayer > currentMax)
+                while (stopwatch.ElapsedMilliseconds < 100) { 
+                var bestDirection = AllDirections()
+                    .Select(direction =>
                     {
-                        currentMax = fieldsBelongToPlayer;
-                        bestDirection = direction;
-                    }
-                }
+                        var result = new { Direction = direction, playerFields = 0, enemyFields = int.MaxValue };
+                        try
+                        {
+                            var simulatedGamefield = SimulateMove(currentX, currentY, direction);
+                            var calc = new VoronoiCalculator(simulatedGamefield, currentPlayerHeads);
+                            result = new { Direction = direction, playerFields = calc.FieldsBelongToPlayer(P), enemyFields = calc.FieldsBelongToNotPlayer(P) };
 
+                            return result;
+                        }
+                        catch (InvalidOperationException e)
+                        {
+                            result = new { Direction = direction, playerFields = 0, enemyFields = int.MaxValue };
+                        }
+
+                        Console.Error.WriteLine($"{direction} bringt: {result.playerFields} gegner:{result.enemyFields}");
+                        return result;
+
+                    })
+                    .OrderByDescending(calcResult => calcResult.playerFields)
+                    .ThenBy(calcResult => calcResult.enemyFields).First().Direction;
+
+                }
                 Console.WriteLine(bestDirection.ToString()); // A single line with UP, DOWN, LEFT or RIGHT
                 Console.Error.WriteLine("Round:" + Round);
                 Round++;
@@ -91,30 +108,19 @@ namespace Thron
             gameField.fields[y0, x0].Player = playerNumber;
         }
 
-        private int SimulateMoveAndGetPlayerFieldCount(int currentX, int currentY, Direction direction)
+        private GameField SimulateMove(int currentX, int currentY, Direction direction)
         {
             var copy = gameField.Copy();
             int playerId = gameField.fields[currentY, currentX].Player.Value;
             var nextCoordinates = NextField(currentX, currentY, direction);
-            if (nextCoordinatesDeath(nextCoordinates))
-                return 0;
+            if (gameField.NextCoordinatesDeath(nextCoordinates))
+                throw new InvalidOperationException("Move Lead to death");
             var nextField = copy.fields[nextCoordinates.newY, nextCoordinates.newX];
             nextField.Player = playerId;
-            var calc = new VoronoiCalculator(copy);
-            return calc.FieldsBelongToPlayer(playerId);
+            return copy;
         }
 
-        private bool nextCoordinatesDeath((int newX, int newY) nextCoordinates)
-        {
-            bool outOfRange = nextCoordinates.newX < 0 || nextCoordinates.newX >= gameField.Width || nextCoordinates.newY < 0 || nextCoordinates.newY >= gameField.Height;
-            if (outOfRange)
-                return true;
-            bool playerOnField = gameField.fields[nextCoordinates.newY, nextCoordinates.newX].Player != null;
-            return playerOnField;
-
-        }
-
-        private (int newX, int newY) NextField(int currentX, int currrentY, Direction direction)
+        public static (int newX, int newY) NextField(int currentX, int currrentY, Direction direction)
         {
             switch (direction)
             {
@@ -128,6 +134,11 @@ namespace Thron
                     return (currentX, currrentY + 1);
             }
             throw new InvalidOperationException("Direction unbekannt");
+        }
+
+        public static List<Direction> AllDirections()
+        {
+            return Enum.GetValues(typeof(Direction)).OfType<Direction>().ToList();
         }
 
     }
@@ -162,10 +173,28 @@ namespace Thron
                 for (int y = 0; y < Height; y++)
                 {
                     copy.fields[y, x] = new Field(x, y);
-                    copy.fields[y, x].Player = this.fields[y, x].Player;
+                    copy.fields[y, x].Player = this.fields[y, x].Player + 0;
                 }
             }
             return copy;
+        }
+
+        public bool NextCoordinatesDeath((int newX, int newY) nextCoordinates)
+        {
+            bool outOfRange = nextCoordinates.newX < 0 || nextCoordinates.newX >= Width || nextCoordinates.newY < 0 || nextCoordinates.newY >= Height;
+            if (outOfRange)
+                return true;
+            bool playerOnField = fields[nextCoordinates.newY, nextCoordinates.newX].Player != null;
+            return playerOnField;
+        }
+
+        public List<Field> PossibleNeighborsOf(Field start)
+        {
+            return Thron.AllDirections()
+                .Select(dir => Thron.NextField(start.X, start.Y, dir))
+                .Where(nextCoordinates => !NextCoordinatesDeath(nextCoordinates))
+                 .Select(coordinates => fields[coordinates.newY, coordinates.newX])
+                 .ToList();
         }
     }
 
@@ -184,7 +213,7 @@ namespace Thron
 
         public override string ToString()
         {
-            return "Player:" + Player;
+            return $"{Y},{X} = {Player}";
         }
     }
 
@@ -197,22 +226,32 @@ namespace Thron
     public class VoronoiCalculator
     {
         public GameField gameField;
+        private List<Field> currentPlayerHeads;
+        Dictionary<Field, int[,]> distsPerPlayer = new Dictionary<Field, int[,]>();
 
-        public VoronoiCalculator(GameField fields)
+        public VoronoiCalculator(GameField fields, List<Field> currentPlayerHeads)
         {
             this.gameField = fields;
+            this.currentPlayerHeads = currentPlayerHeads;
+            foreach (var playerHead in currentPlayerHeads)
+            {
+                distsPerPlayer.Add(playerHead, DistToAllFields(playerHead));
+            }
             CalcVoronoi();
         }
 
         private VoronoiCalculator CalcVoronoi()
         {
-            var takenFields = TakenFields();
+
             foreach (var field in gameField.fields)
             {
-                var minDistFieldsGroup = takenFields.GroupBy(takenField => ManhattanDistance(field, takenField)).OrderBy(group => group.Key).First();
-                if (minDistFieldsGroup.Count() == 1)
+                if (field.Player != null)
+                    continue;
+                var minDistPlayerHeadGroup = currentPlayerHeads.GroupBy(playerHead => MazeDistance(playerHead, field)).OrderBy(group => group.Key).First();
+
+                if (minDistPlayerHeadGroup.Count() == 1)
                 {
-                    field.Player = minDistFieldsGroup.First().Player;
+                    field.Player = minDistPlayerHeadGroup.First().Player;
                 }
                 else
                 {
@@ -222,24 +261,47 @@ namespace Thron
             return this;
         }
 
-
         private static int ManhattanDistance(Field a, Field b)
         {
             int dx = Math.Abs(a.X - b.X);
             int dy = Math.Abs(a.Y - b.Y);
             return dx + dy;
         }
-        private List<Field> TakenFields()
+
+        private int MazeDistance(Field playerHead, Field target)
         {
-            List<Field> result = new List<Field>();
-            foreach (var field in gameField.fields)
+            return distsPerPlayer[playerHead][target.Y, target.X];
+        }
+
+        private int[,] DistToAllFields(Field start)
+        {
+            int[,] dists = new int[gameField.Height, gameField.Width];
+            for (int y = 0; y < dists.GetLength(0); y++)
             {
-                if (field.Player != null)
+                for (int x = 0; x < dists.GetLength(1); x++)
                 {
-                    result.Add(field);
+                    dists[y, x] = int.MaxValue;
                 }
             }
-            return result;
+            bool[,] alreadyVisited = new bool[gameField.Height, gameField.Width];
+            Queue<Field> nextToLookAt = new Queue<Field>();
+            nextToLookAt.Enqueue(start);
+            dists[start.Y, start.X] = 0;
+            while (nextToLookAt.Count > 0)
+            {
+                var currentField = nextToLookAt.Dequeue();
+                int currentDist = dists[currentField.Y, currentField.X];
+                foreach (var neighbor in gameField.PossibleNeighborsOf(currentField))
+                {
+                    if (!alreadyVisited[neighbor.Y, neighbor.X])
+                    {
+                        nextToLookAt.Enqueue(neighbor);
+                        dists[neighbor.Y, neighbor.X] = currentDist + 1;
+                        alreadyVisited[neighbor.Y, neighbor.X] = true;
+                    }
+                }
+            }
+            return dists;
         }
 
         public int FieldsBelongToPlayer(int player)
@@ -248,6 +310,17 @@ namespace Thron
             foreach (var field in gameField.fields)
             {
                 if (field.Player == player)
+                    result++;
+            }
+            return result;
+        }
+
+        public int FieldsBelongToNotPlayer(int player)
+        {
+            int result = 0;
+            foreach (var field in gameField.fields)
+            {
+                if (field.Player != null && field.Player != player)
                     result++;
             }
             return result;
@@ -297,5 +370,4 @@ namespace Thron
         }
 
     }
-
 }
