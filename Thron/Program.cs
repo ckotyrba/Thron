@@ -28,7 +28,6 @@ namespace Thron
 
         private GameField gameField = new GameField();
         public static int Round = 0;
-        private List<Field> currentPlayerHeads;
 
         public void Play()
         {
@@ -38,12 +37,11 @@ namespace Thron
             while (true)
             {
                 Stopwatch stopwatch = Stopwatch.StartNew();
-                currentPlayerHeads = new List<Field>();
                 inputs = ReadConsole().Split(' ');
                 int N = int.Parse(inputs[0]); // total number of players (2 to 4).
                 int P = int.Parse(inputs[1]); // your player number (0 to 3).
-                int currentX = 0;
-                int currentY = 0;
+                gameField.PlayerId = P;
+                gameField.AllHeads = new Dictionary<int, Field>();
                 for (int i = 0; i < N; i++)
                 {
                     inputs = ReadConsole().Split(' ');
@@ -51,44 +49,31 @@ namespace Thron
                     int Y0 = int.Parse(inputs[1]); // starting Y coordinate of lightcycle (or -1)
                     int X1 = int.Parse(inputs[2]); // starting X coordinate of lightcycle (can be the same as X0 if you play before this player)
                     int Y1 = int.Parse(inputs[3]); // starting Y coordinate of lightcycle (can be the same as Y0 if you play before this player)
-                    if (i == P)
-                    {
-                        currentX = X1;
-                        currentY = Y1;
-                    }
+
                     UpdateField(X0, Y0, X1, Y1, i);
-                    currentPlayerHeads.Add(gameField.fields[Y1, X1]);
+                    gameField.AllHeads[i] = gameField.fields[Y1, X1];
                 }
                 // Write an action using Console.WriteLine()
                 // To debug: Console.Error.WriteLine("Debug messages...");
 
-                while (stopwatch.ElapsedMilliseconds < 100) { 
-                var bestDirection = AllDirections()
-                    .Select(direction =>
+                var bestDirection = gameField.PossibleNeighborsPerDirectionOf(gameField.PlayerHead())
+                    .Select(next =>
                     {
-                        var result = new { Direction = direction, playerFields = 0, enemyFields = int.MaxValue };
-                        try
-                        {
-                            var simulatedGamefield = SimulateMove(currentX, currentY, direction);
-                            var calc = new VoronoiCalculator(simulatedGamefield, currentPlayerHeads);
-                            result = new { Direction = direction, playerFields = calc.FieldsBelongToPlayer(P), enemyFields = calc.FieldsBelongToNotPlayer(P) };
+                        var copy = gameField.Copy();
+                        copy.fields[next.nextField.Y,next.nextField.X].Player=gameField.PlayerId;
+                        copy.SetPlayerHeadTo(next.nextField.X, next.nextField.Y);
+                        var calc = new VoronoiCalculator(copy);
 
-                            return result;
-                        }
-                        catch (InvalidOperationException e)
-                        {
-                            result = new { Direction = direction, playerFields = 0, enemyFields = int.MaxValue };
-                        }
-
-                        Console.Error.WriteLine($"{direction} bringt: {result.playerFields} gegner:{result.enemyFields}");
+                        var result = new { Direction = next.direction, playerFields = calc.FieldsBelongToPlayer(gameField.PlayerId), enemyFields = calc.FieldsBelongToNotPlayer(gameField.PlayerId) };
+                        Console.Error.WriteLine($"{result.Direction} bringt: {result.playerFields} gegner:{result.enemyFields}");
                         return result;
-
                     })
                     .OrderByDescending(calcResult => calcResult.playerFields)
                     .ThenBy(calcResult => calcResult.enemyFields).First().Direction;
 
-                }
                 Console.WriteLine(bestDirection.ToString()); // A single line with UP, DOWN, LEFT or RIGHT
+                stopwatch.Stop();
+                Console.Error.WriteLine($"gebraucht: {stopwatch.ElapsedMilliseconds}");
                 Console.Error.WriteLine("Round:" + Round);
                 Round++;
             }
@@ -108,30 +93,20 @@ namespace Thron
             gameField.fields[y0, x0].Player = playerNumber;
         }
 
-        private GameField SimulateMove(int currentX, int currentY, Direction direction)
+        public static (int newX, int newY) Coordinates(Field start, Direction direction)
         {
-            var copy = gameField.Copy();
-            int playerId = gameField.fields[currentY, currentX].Player.Value;
-            var nextCoordinates = NextField(currentX, currentY, direction);
-            if (gameField.NextCoordinatesDeath(nextCoordinates))
-                throw new InvalidOperationException("Move Lead to death");
-            var nextField = copy.fields[nextCoordinates.newY, nextCoordinates.newX];
-            nextField.Player = playerId;
-            return copy;
-        }
-
-        public static (int newX, int newY) NextField(int currentX, int currrentY, Direction direction)
-        {
+            int currentX = start.X;
+            int currentY = start.Y;
             switch (direction)
             {
                 case Direction.RIGHT:
-                    return (currentX + 1, currrentY);
+                    return (currentX + 1, currentY);
                 case Direction.LEFT:
-                    return (currentX - 1, currrentY);
+                    return (currentX - 1, currentY);
                 case Direction.UP:
-                    return (currentX, currrentY - 1);
+                    return (currentX, currentY - 1);
                 case Direction.DOWN:
-                    return (currentX, currrentY + 1);
+                    return (currentX, currentY + 1);
             }
             throw new InvalidOperationException("Direction unbekannt");
         }
@@ -151,6 +126,9 @@ namespace Thron
         private const int HEIGHT = 20;
 
         public Field[,] fields;
+
+        public Dictionary<int, Field> AllHeads = new Dictionary<int, Field>();
+        public int PlayerId;
         public int Width { get { return fields.GetLength(1); } }
         public int Height { get { return fields.GetLength(0); } }
         public GameField(int width = WIDTH, int height = HEIGHT)
@@ -176,6 +154,8 @@ namespace Thron
                     copy.fields[y, x].Player = this.fields[y, x].Player + 0;
                 }
             }
+            copy.AllHeads = this.AllHeads;
+            copy.PlayerId = PlayerId;
             return copy;
         }
 
@@ -190,11 +170,26 @@ namespace Thron
 
         public List<Field> PossibleNeighborsOf(Field start)
         {
+            return PossibleNeighborsPerDirectionOf(start).Select(neighborDirection => neighborDirection.nextField).ToList();
+        }
+
+        public List<(Direction direction, Field nextField)> PossibleNeighborsPerDirectionOf(Field start)
+        {
             return Thron.AllDirections()
-                .Select(dir => Thron.NextField(start.X, start.Y, dir))
-                .Where(nextCoordinates => !NextCoordinatesDeath(nextCoordinates))
-                 .Select(coordinates => fields[coordinates.newY, coordinates.newX])
+                .Select(dir => new { Direction = dir, Coordinates = Thron.Coordinates(start, dir) })
+                .Where(nextCoordinates => !NextCoordinatesDeath(nextCoordinates.Coordinates))
+                 .Select(coordinates => (direction: coordinates.Direction, nextField: fields[coordinates.Coordinates.newY, coordinates.Coordinates.newX]))
                  .ToList();
+        }
+
+        public Field PlayerHead()
+        {
+            return AllHeads[PlayerId];
+        }
+
+        internal void SetPlayerHeadTo(int x, int y)
+        {
+            AllHeads[PlayerId] = fields[y, x];
         }
     }
 
@@ -211,13 +206,30 @@ namespace Thron
             Y = y;
         }
 
+        public override bool Equals(object obj)
+        {
+            return obj is Field field &&
+                   X == field.X &&
+                   Y == field.Y;
+        }
+
+        public override int GetHashCode()
+        {
+            int hashCode = 1861411795;
+            hashCode = hashCode * -1521134295 + X.GetHashCode();
+            hashCode = hashCode * -1521134295 + Y.GetHashCode();
+            return hashCode;
+        }
+
         public override string ToString()
         {
             return $"{Y},{X} = {Player}";
         }
+
+
     }
 
-    enum Direction
+    public enum Direction
     {
         RIGHT, LEFT, UP, DOWN
     }
@@ -226,14 +238,12 @@ namespace Thron
     public class VoronoiCalculator
     {
         public GameField gameField;
-        private List<Field> currentPlayerHeads;
         Dictionary<Field, int[,]> distsPerPlayer = new Dictionary<Field, int[,]>();
 
-        public VoronoiCalculator(GameField fields, List<Field> currentPlayerHeads)
+        public VoronoiCalculator(GameField fields)
         {
             this.gameField = fields;
-            this.currentPlayerHeads = currentPlayerHeads;
-            foreach (var playerHead in currentPlayerHeads)
+            foreach (var playerHead in gameField.AllHeads.Values)
             {
                 distsPerPlayer.Add(playerHead, DistToAllFields(playerHead));
             }
@@ -247,7 +257,7 @@ namespace Thron
             {
                 if (field.Player != null)
                     continue;
-                var minDistPlayerHeadGroup = currentPlayerHeads.GroupBy(playerHead => MazeDistance(playerHead, field)).OrderBy(group => group.Key).First();
+                var minDistPlayerHeadGroup = gameField.AllHeads.Values.GroupBy(playerHead => MazeDistance(playerHead, field)).OrderBy(group => group.Key).First();
 
                 if (minDistPlayerHeadGroup.Count() == 1)
                 {
@@ -356,12 +366,25 @@ namespace Thron
 
         private string printField(Field field)
         {
+
+            string result;
             if (field.Player == null)
-                return ColorString("0", Color.Black);
+                result = ColorString("0", Color.Black);
             else if (field.Player == 0)
-                return ColorString((field.Player + 1).ToString(), Color.Green);
+                result = ColorString((field.Player + 1).ToString(), Color.Green);
             else
-                return ColorString((field.Player + 1).ToString(), Color.Red);
+                result = ColorString((field.Player + 1).ToString(), Color.Red);
+
+            if (FieldIsHead(field))
+                result = $"<b>{result}</b>";
+            return result;
+        }
+
+        private bool FieldIsHead(Field field)
+        {
+            if (field.Player != null && _gameFields.AllHeads.ContainsKey(field.Player.Value))
+                return _gameFields.AllHeads[field.Player.Value].Equals(field);
+            return false;
         }
 
         private string ColorString(string str, Color color)

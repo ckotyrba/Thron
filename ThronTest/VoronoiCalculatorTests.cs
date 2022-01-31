@@ -17,7 +17,8 @@ namespace Thron.Test
         {
             var gamefield = new GameField(3, 3);
             gamefield.fields[0, 0].Player = 1;
-            var calc = new VoronoiCalculator(gamefield, new List<Field>() { gamefield.fields[0, 0] });
+            gamefield.AllHeads.Add(1, gamefield.fields[0, 0]);
+            var calc = new VoronoiCalculator(gamefield);
             Assertions.AssertThat(calc.FieldsBelongToPlayer(1)).IsEqualTo(3 * 3);
         }
 
@@ -26,8 +27,11 @@ namespace Thron.Test
         {
             var gamefield = new GameField(3, 3);
             gamefield.fields[0, 0].Player = 0;
+            gamefield.AllHeads.Add(0, gamefield.fields[0, 0]);
             gamefield.fields[2, 2].Player = 1;
-            var calc = new VoronoiCalculator(gamefield, new List<Field>() { gamefield.fields[0, 0], gamefield.fields[2, 2] });
+            gamefield.AllHeads.Add(1, gamefield.fields[2, 2]);
+
+            var calc = new VoronoiCalculator(gamefield);
             Assertions.AssertThat(calc.FieldsBelongToPlayer(0)).IsEqualTo(3);
             Assertions.AssertThat(calc.FieldsBelongToPlayer(1)).IsEqualTo(3);
         }
@@ -37,8 +41,10 @@ namespace Thron.Test
         {
             var gamefield = new GameField(3, 3);
             gamefield.fields[1, 1].Player = 0;
+            gamefield.AllHeads.Add(0, gamefield.fields[1, 1]);
             gamefield.fields[1, 2].Player = 1;
-            var calc = new VoronoiCalculator(gamefield, new List<Field>() { gamefield.fields[1, 1], gamefield.fields[1, 2] });
+            gamefield.AllHeads.Add(1, gamefield.fields[1, 2]);
+            var calc = new VoronoiCalculator(gamefield);
             Assertions.AssertThat(calc.FieldsBelongToPlayer(0)).IsEqualTo(6);
             Assertions.AssertThat(calc.FieldsBelongToPlayer(1)).IsEqualTo(3);
         }
@@ -48,9 +54,11 @@ namespace Thron.Test
         {
             var gamefield = new GameField(2, 3);
             gamefield.fields[0, 0].Player = 0;
+            gamefield.AllHeads.Add(0, gamefield.fields[0, 0]);
             gamefield.fields[1, 1].Player = 1;
+            gamefield.AllHeads.Add(1, gamefield.fields[1, 1]);
             gamefield.fields[2, 1].Player = 1;
-            var calc = new VoronoiCalculator(gamefield, new List<Field>() { gamefield.fields[0, 0], gamefield.fields[1, 1] });
+            var calc = new VoronoiCalculator(gamefield);
             Assertions.AssertThat(calc.FieldsBelongToPlayer(0)).IsEqualTo(1);
             Assertions.AssertThat(calc.FieldsBelongToPlayer(1)).IsEqualTo(2);
         }
@@ -61,8 +69,10 @@ namespace Thron.Test
             var gamefield = new GameField(2, 2);
             gamefield.fields[0, 0].Player = 0;
             gamefield.fields[1, 1].Player = 0;
+            gamefield.AllHeads.Add(0, gamefield.fields[1, 1]);
             gamefield.fields[0, 1].Player = 1;
-            var calc = new VoronoiCalculator(gamefield, new List<Field>() { gamefield.fields[1, 1], gamefield.fields[0, 1] });
+            gamefield.AllHeads.Add(1, gamefield.fields[0, 1]);
+            var calc = new VoronoiCalculator(gamefield);
             Assertions.AssertThat(calc.FieldsBelongToPlayer(0)).IsEqualTo(3);
             Assertions.AssertThat(calc.FieldsBelongToPlayer(1)).IsEqualTo(1);
         }
@@ -75,9 +85,11 @@ namespace Thron.Test
             gamefield.fields[0, 1].Player = 0;
             gamefield.fields[1, 1].Player = 0;
             gamefield.fields[2, 1].Player = 0;
+            gamefield.AllHeads.Add(0, gamefield.fields[2, 1]);
             gamefield.fields[2, 2].Player = 1;
             gamefield.fields[2, 3].Player = 1;
-            var calc = new VoronoiCalculator(gamefield.Copy(), new List<Field>() { gamefield.fields[2, 1], gamefield.fields[2, 3] });
+            gamefield.AllHeads.Add(1, gamefield.fields[2, 3]);
+            var calc = new VoronoiCalculator(gamefield.Copy());
             Assertions.AssertThat(calc.FieldsBelongToPlayer(0)).IsEqualTo(8);
             Assertions.AssertThat(calc.FieldsBelongToPlayer(1)).IsEqualTo(11);
         }
