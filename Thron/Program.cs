@@ -23,10 +23,10 @@ namespace Thron
         }
     }
 
-    class Thron
+    public class Thron
     {
 
-        private GameField gameField = new GameField();
+        public GameField gameField = new GameField();
         public static int Round = 0;
 
         public void Play()
@@ -51,33 +51,86 @@ namespace Thron
                     int Y1 = int.Parse(inputs[3]); // starting Y coordinate of lightcycle (can be the same as Y0 if you play before this player)
 
                     UpdateField(X0, Y0, X1, Y1, i);
-                    gameField.AllHeads[i] = gameField.fields[Y1, X1];
+                    if (X0 != -1)
+                        gameField.AllHeads[i] = gameField.fields[Y1, X1];
                 }
                 // Write an action using Console.WriteLine()
                 // To debug: Console.Error.WriteLine("Debug messages...");
 
-                var bestDirection = gameField.PossibleNeighborsPerDirectionOf(gameField.PlayerHead())
-                    .Select(next =>
-                    {
-                        var copy = gameField.Copy();
-                        copy.fields[next.nextField.Y,next.nextField.X].Player=gameField.PlayerId;
-                        copy.SetPlayerHeadTo(next.nextField.X, next.nextField.Y);
-                        var calc = new VoronoiCalculator(copy);
+                var playerHead = gameField.PlayerHead();
 
-                        var result = new { Direction = next.direction, playerFields = calc.FieldsBelongToPlayer(gameField.PlayerId), enemyFields = calc.FieldsBelongToNotPlayer(gameField.PlayerId) };
-                        Console.Error.WriteLine($"{result.Direction} bringt: {result.playerFields} gegner:{result.enemyFields}");
-                        return result;
-                    })
-                    .OrderByDescending(calcResult => calcResult.playerFields)
-                    .ThenBy(calcResult => calcResult.enemyFields).First().Direction;
+                //falls auf articulation point stehen, wähle größte nachbar fläche
+                if (gameField.IsArticulationPoint(playerHead))
+                {
+                    var biggestComponent = gameField.PossibleNeighborsPerDirectionOf(playerHead).OrderByDescending(neigbor => gameField.FieldsInComponent(neigbor.nextField)).FirstOrDefault();
+                    Console.WriteLine(biggestComponent.direction);
+                }
 
-                Console.WriteLine(bestDirection.ToString()); // A single line with UP, DOWN, LEFT or RIGHT
+                // wenn kein anderer spieler in eigener Component => floodfill
+                else if (gameField.PlayersCanReachComponent() == 1)
+                {
+                    Console.Error.WriteLine("!!! BIN ALLEIN");
+                    Console.WriteLine(FloodFillNextStep());
+                }
+                else
+                {
+
+                    // sonst 
+                    var bestDirection = gameField.PossibleNeighborsPerDirectionOf(gameField.PlayerHead())
+                        .Select(next =>
+                        {
+                            var copy = gameField.Copy();
+                            copy.fields[next.nextField.Y, next.nextField.X].Player = gameField.PlayerId;
+                            copy.SetPlayerHeadTo(next.nextField.Y, next.nextField.X);
+                            var calc = new VoronoiCalculator(copy);
+
+                            var result = new { Direction = next.direction, playerFields = calc.FieldsBelongToPlayer(gameField.PlayerId), enemyFields = calc.FieldsBelongToNotPlayer(gameField.PlayerId) };
+                            Console.Error.WriteLine($"{result.Direction} bringt: {result.playerFields} gegner:{result.enemyFields}");
+                            return result;
+                        })
+                        .OrderByDescending(calcResult => calcResult.playerFields)
+                        .ThenBy(calcResult => calcResult.enemyFields).First().Direction;
+
+                    Console.WriteLine(bestDirection.ToString()); // A single line with UP, DOWN, LEFT or RIGHT
+                }
                 stopwatch.Stop();
                 Console.Error.WriteLine($"gebraucht: {stopwatch.ElapsedMilliseconds}");
                 Console.Error.WriteLine("Round:" + Round);
                 Round++;
             }
         }
+
+        public Direction FloodFillNextStep()
+        {
+            var start = gameField.PlayerHead();
+
+            //falls auf articulation point stehen, wähle größte nachbar fläche
+            if (gameField.IsArticulationPoint(start))
+            {
+                var biggestComponent = gameField.PossibleNeighborsPerDirectionOf(start).OrderByDescending(neigbor => gameField.FieldsInComponent(neigbor.nextField)).FirstOrDefault();
+                return biggestComponent.direction;
+            }
+            else
+            {
+                // meiste nachbarn (oder hier wenigste freie felder)
+                var neighbors = gameField.PossibleNeighborsPerDirectionOf(start).OrderBy(neighbor => gameField.PossibleNeighborsOf(neighbor.nextField).Count()).ToList();
+
+                while (neighbors.Count > 0)
+                {
+                    var possibleCandidat = neighbors.First();
+                    neighbors.RemoveAt(0);
+                    // articulation vertexes meiden
+                    if (gameField.IsArticulationPoint(possibleCandidat.nextField) && neighbors.Count > 0)
+                    {
+                        continue;
+                    }
+                    return possibleCandidat.direction;
+                }
+            }
+            Console.Error.WriteLine("Flood: Keinen nächsten schritt gefunden");
+            return Direction.RIGHT;
+        }
+
 
         private static string ReadConsole()
         {
@@ -89,8 +142,15 @@ namespace Thron
 
         private void UpdateField(int x0, int y0, int x1, int y1, int playerNumber)
         {
-            gameField.fields[y1, x1].Player = playerNumber;
-            gameField.fields[y0, x0].Player = playerNumber;
+            if (x0 == -1)
+            {
+                gameField.ErasePlayer(playerNumber);
+            }
+            else
+            {
+                gameField.fields[y1, x1].Player = playerNumber;
+                gameField.fields[y0, x0].Player = playerNumber;
+            }
         }
 
         public static (int newX, int newY) Coordinates(Field start, Direction direction)
@@ -159,13 +219,23 @@ namespace Thron
             return copy;
         }
 
-        public bool NextCoordinatesDeath((int newX, int newY) nextCoordinates)
+        private bool NextCoordinatesOutOfRange((int newX, int newY) nextCoordinates)
         {
-            bool outOfRange = nextCoordinates.newX < 0 || nextCoordinates.newX >= Width || nextCoordinates.newY < 0 || nextCoordinates.newY >= Height;
-            if (outOfRange)
-                return true;
-            bool playerOnField = fields[nextCoordinates.newY, nextCoordinates.newX].Player != null;
-            return playerOnField;
+            return nextCoordinates.newX < 0 || nextCoordinates.newX >= Width || nextCoordinates.newY < 0 || nextCoordinates.newY >= Height;
+        }
+
+        private bool NextCoordinatesTakenByAnyone((int newX, int newY) nextCoordinates)
+        {
+            return fields[nextCoordinates.newY, nextCoordinates.newX].Player != null;
+        }
+
+        public List<Field> AllNeigborsOF(Field start)
+        {
+            return Thron.AllDirections()
+                              .Select(dir => Thron.Coordinates(start, dir))
+                              .Where(nextCoordinates => !NextCoordinatesOutOfRange(nextCoordinates))
+                              .Select(coords => fields[coords.newY, coords.newX])
+                              .ToList();
         }
 
         public List<Field> PossibleNeighborsOf(Field start)
@@ -177,7 +247,7 @@ namespace Thron
         {
             return Thron.AllDirections()
                 .Select(dir => new { Direction = dir, Coordinates = Thron.Coordinates(start, dir) })
-                .Where(nextCoordinates => !NextCoordinatesDeath(nextCoordinates.Coordinates))
+                .Where(nextCoordinates => !NextCoordinatesOutOfRange(nextCoordinates.Coordinates) && !NextCoordinatesTakenByAnyone(nextCoordinates.Coordinates))
                  .Select(coordinates => (direction: coordinates.Direction, nextField: fields[coordinates.Coordinates.newY, coordinates.Coordinates.newX]))
                  .ToList();
         }
@@ -187,11 +257,95 @@ namespace Thron
             return AllHeads[PlayerId];
         }
 
-        internal void SetPlayerHeadTo(int x, int y)
+        public void SetPlayerHeadTo(int y, int x)
         {
             AllHeads[PlayerId] = fields[y, x];
         }
+
+        public int PlayersCanReachComponent()
+        {
+            int players = 1;
+
+            Queue<Field> nextToLookAt = new Queue<Field>();
+            Field start = PlayerHead();
+            nextToLookAt.Enqueue(start);
+            bool[,] alreadyVisited = new bool[Height, Width];
+            alreadyVisited[start.Y, start.X] = true;
+            while (nextToLookAt.Count > 0)
+            {
+                var currentField = nextToLookAt.Dequeue();
+                foreach (var neighbor in AllNeigborsOF(currentField))
+                {
+                    if (!alreadyVisited[neighbor.Y, neighbor.X])
+                    {
+                        if (neighbor.Player == null)
+                            nextToLookAt.Enqueue(neighbor);
+                        else if (AllHeads[neighbor.Player.Value] == neighbor)
+                            players++;
+                        alreadyVisited[neighbor.Y, neighbor.X] = true;
+                    }
+                }
+            }
+            return players;
+        }
+
+        public int FieldsInComponent(Field startField)
+        {
+            var start = fields[startField.Y, startField.X];
+            int emptyFields = 0;
+            bool[,] alreadyVisited = new bool[Height, Width];
+            Queue<Field> nextToLookAt = new Queue<Field>();
+            nextToLookAt.Enqueue(start);
+            alreadyVisited[start.Y, start.X] = true;
+            while (nextToLookAt.Count > 0)
+            {
+                var currentField = nextToLookAt.Dequeue();
+                if (currentField.Player == null)
+                    emptyFields++;
+                foreach (var neighbor in PossibleNeighborsOf(currentField))
+                {
+                    if (!alreadyVisited[neighbor.Y, neighbor.X])
+                    {
+                        nextToLookAt.Enqueue(neighbor);
+                        alreadyVisited[neighbor.Y, neighbor.X] = true;
+                    }
+                }
+            }
+            return emptyFields;
+        }
+
+
+
+        public bool IsArticulationPoint(Field field)
+        {
+
+            //wenn entfernen von knoten mehr als 1 knoten unzugänglich macht ist er articulation
+            var copy = Copy();
+            copy.fields[field.Y, field.X].Player = null;
+            int currentFieldsReachable = copy.FieldsInComponent(field);
+            // besetze feld,
+            copy.fields[field.Y, field.X].Player = 9;
+
+            // wähle ersten freien nachbarn
+            var firstNeighbor = copy.PossibleNeighborsOf(field).FirstOrDefault();
+            if (firstNeighbor == null)
+                return false;
+            // bereche für nachbar anzahl knoten
+            int fieldsReachableAfter = copy.FieldsInComponent(firstNeighbor);
+            // knoten zahl muss current -1 sein => sonst articulation
+            return currentFieldsReachable - fieldsReachableAfter != 1;
+        }
+
+        internal void ErasePlayer(int playerNumber)
+        {
+            foreach (var field in fields)
+            {
+                if (field.Player == playerNumber)
+                    field.Player = null;
+            }
+        }
     }
+
 
     [Serializable]
     public class Field

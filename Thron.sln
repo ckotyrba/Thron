@@ -7,6 +7,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Thron", "Thron\Thron.csproj
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ThronTest", "ThronTest\ThronTest.csproj", "{EE8024EE-551A-4257-9266-D20C4D3D6637}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThereIsNoSpoon2", "ThereIsNoSpoon2\ThereIsNoSpoon2.csproj", "{9008EF81-40A6-4366-8C2E-FABDAA3A94E0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThereIsNoSpoon2Test", "ThereIsNoSpoon2Test\ThereIsNoSpoon2Test.csproj", "{EEDCB2C1-D83A-4AAA-B3F4-9F8369441B55}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,14 @@ Global
 		{EE8024EE-551A-4257-9266-D20C4D3D6637}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EE8024EE-551A-4257-9266-D20C4D3D6637}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EE8024EE-551A-4257-9266-D20C4D3D6637}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9008EF81-40A6-4366-8C2E-FABDAA3A94E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9008EF81-40A6-4366-8C2E-FABDAA3A94E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9008EF81-40A6-4366-8C2E-FABDAA3A94E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9008EF81-40A6-4366-8C2E-FABDAA3A94E0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EEDCB2C1-D83A-4AAA-B3F4-9F8369441B55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EEDCB2C1-D83A-4AAA-B3F4-9F8369441B55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EEDCB2C1-D83A-4AAA-B3F4-9F8369441B55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EEDCB2C1-D83A-4AAA-B3F4-9F8369441B55}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
