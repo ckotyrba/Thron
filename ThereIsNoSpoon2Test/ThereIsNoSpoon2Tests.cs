@@ -129,6 +129,51 @@ namespace Test
             Assertions.AssertThat(game.SolutionWins(game.takeObvious())).IsTrue();
         }
 
+        [TestMethod()]
+        public void possibleConnections_1()
+        {
+            var game = new ThereIsNoSpoon2(3, 3,
+                ".1.",
+                "111",
+                ".1.");
+
+            Assertions.AssertThat(game.fields[1, 1].PossibleConnections(null)).HasSize(4);
+        }
+
+
+        [TestMethod()]
+        public void possibleConnections_4()
+        {
+            var game = new ThereIsNoSpoon2(3, 3,
+                ".1.",
+                "141",
+                ".1.");
+
+            Assertions.AssertThat(game.fields[1,1].PossibleConnections(null)).HasSize(1);
+        }
+
+        [TestMethod()]
+        public void possibleConnections_8()
+        {
+            var game = new ThereIsNoSpoon2(3, 3,
+                ".2.",
+                "282",
+                ".2.");
+
+            Assertions.AssertThat(game.fields[1, 1].PossibleConnections(null)).HasSize(1);
+        }
+
+        [TestMethod()]
+        public void possibleConnections_7()
+        {
+            var game = new ThereIsNoSpoon2(3, 3,
+                ".2.",
+                "272",
+                ".2.");
+
+            Assertions.AssertThat(game.fields[1, 1].PossibleConnections(null)).HasSize(1);
+        }
+
     }
 
 }
