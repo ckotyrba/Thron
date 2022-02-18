@@ -78,11 +78,12 @@ public class ThereIsNoSpoon2
         {
             lines.Add(connection);
             Console.Error.WriteLine($"füge {connection}");
-            // wir können knoten nicht mehr voll machen => tot
-            if (startNode.FreeSlots(lines) > startNode.PossibleConnections(lines).Count)
-                return false;
-            if (DoNextMove(ref lines, connection.b))
-                return true;
+            if (SoluationValid(lines))
+            {
+                Console.WriteLine(connection.ToOutput());
+                if (DoNextMove(ref lines, connection.b))
+                    return true;
+            }
             lines.Remove(connection);
             Console.Error.WriteLine($"entferne {connection}");
         }
@@ -121,23 +122,31 @@ public class ThereIsNoSpoon2
             startSize = result.Count;
             foreach (var node in GetAllNodes())
             {
-                if (node.neighbors.Count == 1)
+                if (node.FreeSlots(result) == 0)
+                    continue;
+                var possibleNeighbors = node.neighbors.Where(neighbor => neighbor.FreeSlots(result) > 0);
+                if (node.symbol == 1)
                 {
-                    var line = new Line(node, node.neighbors[0]);
-                    if (node.symbol > 2)
-                        throw new InvalidDataException("Darf eigentlich nicht setzen" + node);
-                    if (!result.Contains(line))
-                        for (int i = 0; i < node.symbol; i++)
-                        {
-                            result.Add(line);
-                        }
+                    possibleNeighbors = possibleNeighbors.Where(neighbor => neighbor.symbol != 1);
                 }
-
-                // WENN mögliche linien == symbol, nehme alle
-                var possible = node.PossibleConnections(result);
-                if (possible.Count == node.FreeSlots(result))
+                if (possibleNeighbors.Count() == 1)
                 {
-                    result.AddRange(NeededLinesToAdd(result, possible));
+                    var line = new Line(node, possibleNeighbors.First(), node.FreeSlots(result));
+                    if (!result.Contains(line))
+                        result.Add(line);
+                }
+                else
+                {
+                    // WENN mögliche linien == symbol, nehme alle
+                    int freeSlots = node.FreeSlots(result);
+                    int neighborFreePossibleSlots = possibleNeighbors.Sum(neighbor => Math.Min(2, neighbor.FreeSlots(result)));
+                    if (freeSlots == neighborFreePossibleSlots)
+                    {
+                        foreach (var neighbor in possibleNeighbors)
+                        {
+                            result.Add(new Line(node, neighbor, Math.Min(2, neighbor.FreeSlots(result))));
+                        }
+                    }
                 }
             }
         } while (result.Count - startSize > 0);
@@ -176,20 +185,19 @@ public class ThereIsNoSpoon2
                 return false;
 
             // jeder knoten kann noch ziel erreichen
-            int possibleLinks = node.PossibleConnections(lines).Count;
-            int connections = node.linesToNode(lines);
-            if (node.symbol - connections > possibleLinks)
+            int neighborFreeSlots = node.neighbors.Sum(neighbor => neighbor.FreeSlots(lines));
+            if (node.FreeSlots(lines) > neighborFreeSlots)
                 return false;
-
         }
+
         // keine linien schneiden sich
         foreach (var line in lines)
         {
             if (lines.Any(li => li.Intersect(line)))
                 return false;
+            if (lines.Where(li => li.EqualsIgnoreTimes(line)).Sum(li => li.times) > 2)
+                return false;
         }
-
-
 
         return true;
     }
@@ -300,29 +308,19 @@ public class Field
     public List<Line> PossibleConnections(List<Line> lines)
     {
         var result = new List<Line>();
-        var pickedLines = new List<Line>(lines);
         if (linesToNode(lines) >= symbol)
             return result;
         foreach (var neighbor in neighbors)
         {
-        elementCheck:
-            if (neighbor.symbol == symbol && symbol == 1)
+            if (neighbor.FreeSlots(lines) > 0)
             {
-                continue;
-            }
-            var connection = new Line(this, neighbor);
-
-            int alreadyPickedConnections = pickedLines.Where(line => line.Equals(connection)).Count();
-            if (alreadyPickedConnections < 2)
-            {
-                if (neighbor.FreeSlots(pickedLines) > 0)
+                var connection = new Line(this, neighbor, 1);
+                if (!connection.IntersectAny(lines))
                 {
-                    if (!connection.IntersectAny(lines))
+                    result.Add(connection);
+                    if (this.FreeSlots(lines) > 1 && neighbor.FreeSlots(lines) > 1)
                     {
-                        result.Add(connection);
-                        pickedLines.Add(connection);
-                        if (symbol > 1)
-                            goto elementCheck;
+                        result.Add(new Line(this, neighbor, 2));
                     }
                 }
             }
@@ -338,7 +336,7 @@ public class Field
 
     public int linesToNode(List<Line> lines)
     {
-        return lines.Where(line => line.a.Equals(this) || line.b.Equals(this)).Count();
+        return lines.Where(line => line.a.Equals(this) || line.b.Equals(this)).Select(line => line.times).Sum();
     }
 
 }
@@ -348,10 +346,15 @@ public class Line : IEquatable<Line>
     public Field a;
     public Field b;
 
-    public Line(Field a, Field b)
+    public int times;
+
+    public Line(Field a, Field b, int times = 1)
     {
         this.a = a;
         this.b = b;
+        this.times = times;
+        if (times == 0)
+            throw new InvalidDataException("0 nicht erlaubt");
     }
 
     public bool NodeBetweenLine(Field node)
@@ -406,7 +409,7 @@ public class Line : IEquatable<Line>
 
     internal string ToOutput()
     {
-        return $"{a.x} {a.y} {b.x} {b.y} 1";
+        return $"{a.x} {a.y} {b.x} {b.y} {times}";
     }
 
     private Field MinField()
@@ -422,12 +425,17 @@ public class Line : IEquatable<Line>
     {
         var minField = MinField();
         var maxField = a.Equals(minField) ? b : a;
-        return $"{minField}=>{maxField}";
+        return $"{minField}=>{maxField}:{times}";
     }
 
     public bool Equals(Line other)
     {
-        return a.Equals(other.a) && b.Equals(other.b) ||
-                     a.Equals(other.b) && b.Equals(other.a);
+        return EqualsIgnoreTimes(other) && times == other.times;
+    }
+
+
+    public bool EqualsIgnoreTimes(Line other)
+    {
+        return (a.Equals(other.a) && b.Equals(other.b)) || (a.Equals(other.b) && b.Equals(other.a));
     }
 }

@@ -8,6 +8,18 @@ namespace Test
     [TestClass()]
     public class ThereIsNoSpoon2Tests
     {
+
+        [TestMethod()]
+        public void ThereIsNoSpoon2TestSimple()
+        {
+            var game = new ThereIsNoSpoon2(
+                "11");
+
+            var lines = new List<Line>();
+            Assertions.AssertThat(game.DoNextMove(ref lines)).IsTrue();
+
+        }
+
         [TestMethod()]
         public void ThereIsNoSpoon2Test()
         {
@@ -74,7 +86,7 @@ namespace Test
             var game = new ThereIsNoSpoon2(
                 "33",
                 "33");
-                
+
 
             var lines = new List<Line>();
             Assertions.AssertThat(game.DoNextMove(ref lines)).IsTrue();
@@ -165,7 +177,7 @@ namespace Test
             var lines = new List<Line>();
             Assertions.AssertThat(game.DoNextMove(ref lines)).IsTrue();
 
-        }       
+        }
         [TestMethod()]
         public void ThereIsNoSpoon2Test_multiple2()
         {
@@ -178,8 +190,8 @@ namespace Test
             var lines = new List<Line>();
             Assertions.AssertThat(game.DoNextMove(ref lines)).IsTrue();
 
-        }   
-        
+        }
+
         [TestMethod()]
         public void ThereIsNoSpoon2Test_CG()
         {
@@ -268,6 +280,16 @@ namespace Test
                 "11",
                 "22");
             Assertions.AssertThat(game.fields[0, 0].PossibleConnections(new List<Line>())).HasSize(1);
+        }
+
+        [TestMethod()]
+        public void possibleConnections_Saturated()
+        {
+            var game = new ThereIsNoSpoon2(
+                "31",
+                "2.");
+            var line32 = new Line(game.fields[0, 0], game.fields[0, 1], 1);
+            Assertions.AssertThat(game.fields[0, 0].PossibleConnections(new List<Line>() { line32 })).HasSize(2);
         }
     }
 

@@ -13,7 +13,7 @@ namespace Test
         [TestMethod()]
         public void NodeBetweenLineTest_HORI()
         {
-            var line = new Line(new Field('1', 0, 0), new Field('1', 2, 0));
+            var line = new Line(new Field('1', 0, 0), new Field('1', 2, 0), 1);
             AssertNet.Assertions.AssertThat(line.NodeBetweenLine(new Field('.', 1, 0))).IsTrue();
             AssertNet.Assertions.AssertThat(line.NodeBetweenLine(new Field('.', 0, 0))).IsFalse();
             AssertNet.Assertions.AssertThat(line.NodeBetweenLine(new Field('.', 2, 0))).IsFalse();
@@ -23,7 +23,7 @@ namespace Test
         [TestMethod()]
         public void NodeBetweenLineTest_VERTI()
         {
-            var line = new Line(new Field('1', 0, 0), new Field('1', 0, 2));
+            var line = new Line(new Field('1', 0, 0), new Field('1', 0, 2), 1);
             AssertNet.Assertions.AssertThat(line.NodeBetweenLine(new Field('.', 0, 1))).IsTrue();
             AssertNet.Assertions.AssertThat(line.NodeBetweenLine(new Field('.', 0, 0))).IsFalse();
             AssertNet.Assertions.AssertThat(line.NodeBetweenLine(new Field('.', 0, 2))).IsFalse();
@@ -33,8 +33,8 @@ namespace Test
         [TestMethod()]
         public void IntersectTest()
         {
-            Line a = new Line(new Field('1', 1, 0), new Field('1', 1, 2));
-            Line b = new Line(new Field('1', 0, 1), new Field('1', 2, 1));
+            Line a = new Line(new Field('1', 1, 0), new Field('1', 1, 2), 1);
+            Line b = new Line(new Field('1', 0, 1), new Field('1', 2, 1), 1);
 
             AssertNet.Assertions.AssertThat(a.Intersect(b)).IsTrue();
         }
@@ -42,8 +42,8 @@ namespace Test
         [TestMethod()]
         public void IntersectTest_EdgeNot()
         {
-            Line a = new Line(new Field('1', 0, 0), new Field('1', 0, 2));
-            Line b = new Line(new Field('1', 0, 0), new Field('1', 2, 0));
+            Line a = new Line(new Field('1', 0, 0), new Field('1', 0, 2), 1);
+            Line b = new Line(new Field('1', 0, 0), new Field('1', 2, 0), 1);
 
             AssertNet.Assertions.AssertThat(a.Intersect(b)).IsFalse();
         }
@@ -51,10 +51,19 @@ namespace Test
         [TestMethod()]
         public void IntersectTest_Parralell()
         {
-            Line a = new Line(new Field('1', 0, 0), new Field('1', 0, 2));
-            Line b = new Line(new Field('1', 0, 2), new Field('1', 2, 2));
+            Line a = new Line(new Field('1', 0, 0), new Field('1', 0, 2), 1);
+            Line b = new Line(new Field('1', 0, 2), new Field('1', 2, 2), 1);
 
             AssertNet.Assertions.AssertThat(a.Intersect(b)).IsFalse();
+        }
+
+        [TestMethod()]
+        public void LineEqual()
+        {
+            Line a = new Line(new Field('1', 1, 0), new Field('1', 0, 1), 1);
+            Line b = new Line(new Field('1', 0, 1), new Field('1', 1, 0), 1);
+
+            AssertNet.Assertions.AssertThat(a.Equals(b)).IsTrue();
         }
     }
 }
