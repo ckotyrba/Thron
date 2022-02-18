@@ -22,26 +22,26 @@ public class ThereIsNoSpoon2
             string line = Console.ReadLine(); // width characters, each either a number or a '.'
             lines.Add(line);
         }
-        var game = new ThereIsNoSpoon2(width, height, lines.ToArray());
+        var game = new ThereIsNoSpoon2(lines.ToArray());
 
 
         List<Line> connections = new List<Line>();
-        if (!game.FindSolutionRecursiv(ref connections))
+        if (!game.DoNextMove(ref connections))
             throw new InvalidProgramException("No solution found");
 
-        foreach (var line in connections)
+        foreach (var connection in connections)
         {
-            Console.WriteLine(line.ToOutput());
+            Console.WriteLine(connection.ToOutput());
         }
     }
 
     public Field[,] fields;
 
-    public ThereIsNoSpoon2(int width, int height, params string[] gameField)
+    public ThereIsNoSpoon2(params string[] gameField)
     {
-        fields = new Field[width, height];
+        fields = new Field[gameField[0].Length, gameField.Length];
 
-        for (int y = 0; y < height; y++)
+        for (int y = 0; y < gameField.Length; y++)
         {
             string line = gameField[y]; // width characters, each either a number or a '.'
             Console.Error.WriteLine(line);
@@ -54,63 +54,110 @@ public class ThereIsNoSpoon2
         RecalcNeighbors();
     }
 
-    public List<Line> takeObvious()
-    {
-        List<Line> result = new List<Line>();
-        foreach (var node in GetAllNodes())
-        {
-            if (node.neighbors.Count == 1)
-            {
-                var line = new Line(node, node.neighbors[0]);
-                if (node.symbol > 2)
-                    throw new InvalidDataException("Darf eigentlich nicht setzen" + node);
-                if (!result.Contains(line))
-                    for (int i = 0; i < node.symbol; i++)
-                    {
-                        result.Add(line);
-                    }
-            }
+    private int lastPrintedIndex = -1;
 
-            // WENN mögliche linien == symbol, nehme alle
-            /*      var possible = node.PossibleConnections(new List<Line>());
-                  if (possible.Count == node.symbol)
-                  {
-                      foreach (var possibleLine in possible)
-                      {
-                          int neededLinksToNeighbor = possible.Where(line => line.Equals(possibleLine)).Count();
-                          int alreadyTaken = result.Where(line => line.Equals(possibleLine)).Count();
-                          if (neededLinksToNeighbor > alreadyTaken)
-                          {
-                              result.Add(possibleLine);
-                          }
-                      }
-                  }*/
+    public bool DoNextMove(ref List<Line> lines, Field startNode = null)
+    {
+        //Console.Error.WriteLine($"Schaue {startNode}");
+        if (startNode == null)
+        {
+            var obvious = takeObvious();
+            if (obvious.Count > 0)
+            {
+                var saveLink = obvious[0];
+                startNode = saveLink.b;
+                lines.AddRange(obvious);
+            }
+            else
+            {
+                startNode = GetAllNodes()[0];
+            }
+        }
+        var connectionsTriedInThisRun = startNode.PossibleConnections(lines);
+        foreach (var connection in connectionsTriedInThisRun)
+        {
+            lines.Add(connection);
+            Console.Error.WriteLine($"füge {connection}");
+            // wir können knoten nicht mehr voll machen => tot
+            if (startNode.FreeSlots(lines) > startNode.PossibleConnections(lines).Count)
+                return false;
+            if (DoNextMove(ref lines, connection.b))
+                return true;
+            lines.Remove(connection);
+            Console.Error.WriteLine($"entferne {connection}");
+        }
+
+        var linesAlreadyTaken = new List<Line>(lines);
+        Field lastNodeWithPossilities = LinesToNodes(lines)
+            .LastOrDefault(node => node.PossibleConnections(linesAlreadyTaken).Where(line => !connectionsTriedInThisRun.Contains(line)).Any());
+
+        // keine züge mehr möglich und keine freien züge in aufrufkette, dann müssten wir gewonnen haben. sonst gehe solange zurück, biss alternativer zug noch möglich gewesen wäre
+        if (lastNodeWithPossilities == null)
+        {
+            return SolutionWins(lines);
+        }
+
+        // freie züge noch möglich, springe zu freien knoten
+        return DoNextMove(ref lines, lastNodeWithPossilities);
+    }
+
+    private List<Field> LinesToNodes(List<Line> lines)
+    {
+        List<Field> result = new List<Field>();
+        foreach (var line in lines)
+        {
+            result.Add(line.a);
+            result.Add(line.b);
         }
         return result;
     }
 
-    public bool FindSolutionRecursiv(ref List<Line> lines, int depth = 0)
+    public List<Line> takeObvious()
     {
-        if (lines.Count == 0)
+        List<Line> result = new List<Line>();
+        int startSize;
+        do
         {
-            lines.AddRange(takeObvious());
-        }
-        if (SolutionWins(lines))
-            return true;
-        var possibleLines = PossibleLines(lines);
-        foreach (var currentLine in possibleLines)
-        {
-            lines.Add(currentLine);
-            if (SoluationValid(lines))
+            startSize = result.Count;
+            foreach (var node in GetAllNodes())
             {
-                if (FindSolutionRecursiv(ref lines, ++depth))
+                if (node.neighbors.Count == 1)
                 {
-                    return true;
+                    var line = new Line(node, node.neighbors[0]);
+                    if (node.symbol > 2)
+                        throw new InvalidDataException("Darf eigentlich nicht setzen" + node);
+                    if (!result.Contains(line))
+                        for (int i = 0; i < node.symbol; i++)
+                        {
+                            result.Add(line);
+                        }
+                }
+
+                // WENN mögliche linien == symbol, nehme alle
+                var possible = node.PossibleConnections(result);
+                if (possible.Count == node.FreeSlots(result))
+                {
+                    result.AddRange(NeededLinesToAdd(result, possible));
                 }
             }
-            lines.Remove(currentLine);
+        } while (result.Count - startSize > 0);
+        return result;
+    }
+
+    private static List<Line> NeededLinesToAdd(List<Line> alreadyTaken, List<Line> toAdd)
+    {
+        List<Line> result = new List<Line>();
+        foreach (var targetLine in toAdd)
+        {
+            int neededLinksInTarget = toAdd.Where(line => line.Equals(targetLine)).Count();
+            int alreadyTakenCount = alreadyTaken.Where(line => line.Equals(targetLine)).Count();
+            int inResult = result.Where(line => line.Equals(targetLine)).Count();
+            if (neededLinksInTarget > alreadyTakenCount + inResult)
+            {
+                result.Add(targetLine);
+            }
         }
-        return false;
+        return result;
     }
 
     public bool SolutionWins(List<Line> lines)
@@ -145,41 +192,6 @@ public class ThereIsNoSpoon2
 
 
         return true;
-    }
-
-
-    public List<Line> PossibleLines(List<Line> alreadyTakenLines)
-    {
-        List<Line> result = new List<Line>();
-        foreach (var node in fields)
-        {
-            foreach (var neighbor in node.neighbors)
-            {
-                var line = new Line(node, neighbor);
-                if (alreadyTakenLines.Any(li => li.Intersect(line)))
-                    continue;
-                int linesAlreadyTaken = alreadyTakenLines.Where(li => li.Equals(line)).Count();
-                int linesAlreadyInResult = result.Where(li => li.Equals(line)).Count();
-                if (linesAlreadyInResult + linesAlreadyTaken < 2)
-                    result.Add(line);
-            }
-        }
-        return result;
-    }
-
-    public List<Line> PossibleLinesIgnoreing(Field node)
-    {
-        List<Line> result = new List<Line>();
-        foreach (var neighbor in node.neighbors)
-        {
-            var line = new Line(node, neighbor);
-            result.Add(line);
-            if (neighbor.symbol >= 2)
-            {
-                result.Add(line);
-            }
-        }
-        return result;
     }
 
     public void RecalcNeighbors()
@@ -285,43 +297,43 @@ public class Field
         return symbol != -1;
     }
 
-    public List<List<Line>> PossibleConnections(List<Line> lines)
+    public List<Line> PossibleConnections(List<Line> lines)
     {
-        var result = new List<List<Line>>();
-        Combos(symbol, new List<Line>(), ref result);
+        var result = new List<Line>();
+        var pickedLines = new List<Line>(lines);
+        if (linesToNode(lines) >= symbol)
+            return result;
+        foreach (var neighbor in neighbors)
+        {
+        elementCheck:
+            if (neighbor.symbol == symbol && symbol == 1)
+            {
+                continue;
+            }
+            var connection = new Line(this, neighbor);
+
+            int alreadyPickedConnections = pickedLines.Where(line => line.Equals(connection)).Count();
+            if (alreadyPickedConnections < 2)
+            {
+                if (neighbor.FreeSlots(pickedLines) > 0)
+                {
+                    if (!connection.IntersectAny(lines))
+                    {
+                        result.Add(connection);
+                        pickedLines.Add(connection);
+                        if (symbol > 1)
+                            goto elementCheck;
+                    }
+                }
+            }
+        }
         return result;
     }
 
-    void Combos(int connectionsPossible, List<Line> currentCombo, ref List<List<Line>> takenCombos)
-    {
-        // wenn es keine züge mehr gibt, geb lösung an schon gezogene lösung, falls noch nicht gezogen
-        if (connectionsPossible == 0)
-        {
-            foreach (List<Line> combo in takenCombos)
-            {
-                if (currentCombo.All(line => combo.Contains(line)))
-                {
-                    return;
-                }
-            }
-            takenCombos.Add(new List<Line>(currentCombo));
-            return;
-        }
 
-        List<Field> doubleNeighbors = new List<Field>(neighbors);
-        if (connectionsPossible > 1)
-            doubleNeighbors.AddRange(neighbors);
-        // ziehe 1 line jeweils für einen nachbar
-        foreach (var neighbor in doubleNeighbors)
-        {
-            if (neighbor.linesToNode(currentCombo) < 2 && neighbor.linesToNode(currentCombo) < neighbor.symbol)
-            {
-                Line currentLine = new Line(this, neighbor);
-                currentCombo.Add(currentLine);
-                Combos(connectionsPossible - 1, currentCombo, ref takenCombos);
-                currentCombo.Remove(currentLine);
-            }
-        }
+    public int FreeSlots(List<Line> lines)
+    {
+        return symbol - linesToNode(lines);
     }
 
     public int linesToNode(List<Line> lines)
@@ -356,6 +368,11 @@ public class Line : IEquatable<Line>
             }
         }
         return false;
+    }
+
+    public bool IntersectAny(List<Line> others)
+    {
+        return others.Any(line => line.Intersect(this));
     }
 
 
