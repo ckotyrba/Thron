@@ -58,15 +58,17 @@ public class ThereIsNoSpoon2
 
     public bool DoNextMove(ref List<Line> lines, Field startNode = null)
     {
+        var obvious = takeObvious(lines);
+        lines.AddRange(obvious);
+        //obvious.ForEach(line => Console.WriteLine(line.ToOutput()));
+        Console.Error.WriteLine($"nehme offensichtlich: {string.Join(';', obvious)}");
         //Console.Error.WriteLine($"Schaue {startNode}");
         if (startNode == null)
         {
-            var obvious = takeObvious();
             if (obvious.Count > 0)
             {
                 var saveLink = obvious[0];
                 startNode = saveLink.b;
-                lines.AddRange(obvious);
             }
             else
             {
@@ -76,15 +78,16 @@ public class ThereIsNoSpoon2
         var connectionsTriedInThisRun = startNode.PossibleConnections(lines);
         foreach (var connection in connectionsTriedInThisRun)
         {
+            List<Line> saveLines = new List<Line>(lines);
             lines.Add(connection);
             Console.Error.WriteLine($"füge {connection}");
             if (SoluationValid(lines))
             {
-                Console.WriteLine(connection.ToOutput());
+                //         Console.WriteLine(connection.ToOutput());
                 if (DoNextMove(ref lines, connection.b))
                     return true;
             }
-            lines.Remove(connection);
+            lines = saveLines;
             Console.Error.WriteLine($"entferne {connection}");
         }
 
@@ -113,9 +116,9 @@ public class ThereIsNoSpoon2
         return result;
     }
 
-    public List<Line> takeObvious()
+    public List<Line> takeObvious(List<Line> alreadyTaken = null)
     {
-        List<Line> result = new List<Line>();
+        List<Line> result = alreadyTaken == null ? new List<Line>() : new List<Line>(alreadyTaken);
         int startSize;
         do
         {
@@ -131,9 +134,20 @@ public class ThereIsNoSpoon2
                 }
                 if (possibleNeighbors.Count() == 1)
                 {
-                    var line = new Line(node, possibleNeighbors.First(), node.FreeSlots(result));
-                    if (!result.Contains(line))
-                        result.Add(line);
+
+                    var neighbor = possibleNeighbors.First();
+                    int freeSlots = node.FreeSlots(result);
+                    // verbinde 2er nicht mit 2, mit 2er nachbar
+                    if (node.symbol == 2 && neighbor.symbol == 2)
+                    {
+                        freeSlots--;
+                    }
+                    if (freeSlots > 0)
+                    {
+                        var line = new Line(node, neighbor, freeSlots);
+                        if (!result.Contains(line))
+                            result.Add(line);
+                    }
                 }
                 else
                 {
@@ -150,22 +164,8 @@ public class ThereIsNoSpoon2
                 }
             }
         } while (result.Count - startSize > 0);
-        return result;
-    }
-
-    private static List<Line> NeededLinesToAdd(List<Line> alreadyTaken, List<Line> toAdd)
-    {
-        List<Line> result = new List<Line>();
-        foreach (var targetLine in toAdd)
-        {
-            int neededLinksInTarget = toAdd.Where(line => line.Equals(targetLine)).Count();
-            int alreadyTakenCount = alreadyTaken.Where(line => line.Equals(targetLine)).Count();
-            int inResult = result.Where(line => line.Equals(targetLine)).Count();
-            if (neededLinksInTarget > alreadyTakenCount + inResult)
-            {
-                result.Add(targetLine);
-            }
-        }
+        var temp = new List<Line>(result);
+        result.RemoveAll(line => alreadyTaken.Contains(line));
         return result;
     }
 
@@ -314,10 +314,15 @@ public class Field
         {
             if (neighbor.FreeSlots(lines) > 0)
             {
+                if (this.symbol == 1 && neighbor.symbol == 1)
+                    continue;
+
                 var connection = new Line(this, neighbor, 1);
-                if (!connection.IntersectAny(lines))
+                if (!connection.IntersectAny(lines) && !lines.Contains(connection))
                 {
                     result.Add(connection);
+                    if (this.symbol == 2 && neighbor.symbol == 2)
+                        continue;
                     if (this.FreeSlots(lines) > 1 && neighbor.FreeSlots(lines) > 1)
                     {
                         result.Add(new Line(this, neighbor, 2));
