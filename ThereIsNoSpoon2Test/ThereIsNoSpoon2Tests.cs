@@ -186,8 +186,8 @@ namespace Test
             var lines = new List<Line>();
             Assertions.AssertThat(game.DoNextMove(ref lines)).IsTrue();
 
-        }   
-        
+        }
+
         [TestMethod()]
         public void ThereIsNoSpoon2Test_Fortgeschritten3()
         {
@@ -365,6 +365,7 @@ namespace Test
             Assertions.AssertThat(game.fields[0, 0].PossibleConnections(new List<Line>() { line32 })).HasSize(2);
         }
 
+
         [TestMethod()]
         public void TakeSaveLinesTest_keinerMöglich()
         {
@@ -419,6 +420,17 @@ namespace Test
             Assertions.AssertThat(game.TakeSaveLines(game.fields[1, 0], new List<Line>())).HasSize(2);
         }
 
+
+        [TestMethod()]
+        public void TakeSaveLinesTest_2erKeineSaveLine()
+        {
+
+            var game = new ThereIsNoSpoon2(
+                "323");
+
+            Assertions.AssertThat(game.TakeSaveLines(game.fields[1, 0], new List<Line>() { new Line(game.fields[1, 0], game.fields[2, 0]) })).HasSize(0);
+        }
+
         [TestMethod()]
         public void TakeNeighbor2SolutionTest()
         {
@@ -427,6 +439,44 @@ namespace Test
               "24");
 
             Assertions.AssertThat(game.TakeNeighbor2Solution(game.fields[1, 1], new List<Line>())).HasSize(2);
+        }
+
+
+        [TestMethod()]
+        public void SolutionIsCoherentTest()
+        {
+            var game = new ThereIsNoSpoon2(
+                "121");
+
+            var line12 = new Line(game.fields[0, 0], game.fields[1, 0]);
+            var line23 = new Line(game.fields[1, 0], game.fields[2, 0]);
+            Assertions.AssertThat(game.SolutionIsCoherent(new List<Line>() { line12, line23 })).IsTrue();
+        }
+
+        [TestMethod()]
+        public void SolutionIsCoherentTest_Circle()
+        {
+            var game = new ThereIsNoSpoon2(
+                "22",
+                "22");
+
+            var line01 = new Line(game.fields[0, 0], game.fields[1, 0]);
+            var line13 = new Line(game.fields[1, 0], game.fields[1, 1]);
+            var line23 = new Line(game.fields[0, 1], game.fields[1, 1]);
+            var line21 = new Line(game.fields[0, 1], game.fields[0, 1]);
+            Assertions.AssertThat(game.SolutionIsCoherent(new List<Line>() { line01, line13, line21, line23 })).IsTrue();
+        }
+
+        [TestMethod()]
+        public void SolutionIsCoherentTest_false()
+        {
+
+            var game = new ThereIsNoSpoon2(
+                "2222");
+
+            var line12 = new Line(game.fields[0, 0], game.fields[1, 0]);
+            var line23 = new Line(game.fields[2, 0], game.fields[3, 0]);
+            Assertions.AssertThat(game.SolutionIsCoherent(new List<Line>() { line12, line23, line12, line23 })).IsFalse();
         }
     }
 
