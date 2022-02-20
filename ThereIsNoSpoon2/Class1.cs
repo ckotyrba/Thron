@@ -134,7 +134,7 @@ public class ThereIsNoSpoon2
                 result.AddRange(TakeNeighbor2Solution(node, result));
                 result.AddRange(TakeRemainingConnectionSameAsNeighborsSum(node, result));
 
-                var possibleNeighbors = node.neighbors.Where(neighbor => neighbor.FreeSlots(result) > 0).ToList();
+                var possibleNeighbors = node.PossibleNeighbors(result);
                 if (node.symbol == 1)
                 {
                     possibleNeighbors = possibleNeighbors.Where(neighbor => neighbor.symbol != 1).ToList();
@@ -179,13 +179,16 @@ public class ThereIsNoSpoon2
 
     private IEnumerable<Line> TakeRemainingConnectionSameAsNeighborsSum(Field node, List<Line> result)
     {
-        int possibleConnections = node.neighbors.Sum(neighbor => 2 - ConnectionsAlreadyTaken(result, node, neighbor));
+        var possibleNeighbors = node.PossibleNeighbors(result);
+        int possibleConnections = possibleNeighbors.Sum(neighbor => 2 - ConnectionsAlreadyTaken(result, node, neighbor));
         int remainingConnections = node.FreeSlots(result);
         if (possibleConnections == remainingConnections)
         {
-            foreach (var neighbor in node.neighbors.Where(neighbor => 2 - ConnectionsAlreadyTaken(result, node, neighbor) > 0))
+            foreach (var neighbor in possibleNeighbors)
             {
-                yield return new Line(node, neighbor, 2 - ConnectionsAlreadyTaken(result, node, neighbor));
+                int possibleConnectionsToNeighbor = 2 - ConnectionsAlreadyTaken(result, node, neighbor);
+                if (possibleConnectionsToNeighbor > 0)
+                    yield return new Line(node, neighbor, possibleConnectionsToNeighbor);
             }
         }
         yield break;
@@ -348,7 +351,7 @@ public class ThereIsNoSpoon2
         return allNodes;
     }
 
-    private static int ConnectionsAlreadyTaken(List<Line> connections, Field a, Field b)
+    public static int ConnectionsAlreadyTaken(List<Line> connections, Field a, Field b)
     {
         return connections.Where(line => line.EqualsIgnoreTimes(new Line(a, b, 1))).Sum(line => line.times);
     }
@@ -387,6 +390,14 @@ public class Field
     public bool IsNode()
     {
         return symbol != -1;
+    }
+
+    public List<Field> PossibleNeighbors(List<Line> lines)
+    {
+        return neighbors
+            .Where(neighbor => !new Line(this, neighbor).IntersectAny(lines))
+            .Where(neighbor => ThereIsNoSpoon2.ConnectionsAlreadyTaken(lines, this, neighbor) < 2)
+            .Where(neighbor => neighbor.FreeSlots(lines) > 0).ToList();
     }
 
     public List<Line> PossibleConnections(List<Line> lines)
