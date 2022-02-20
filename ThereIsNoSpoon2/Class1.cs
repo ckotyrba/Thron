@@ -34,8 +34,6 @@ public class ThereIsNoSpoon2
         }
     }
 
-    private static int currentIndex = 0;
-
     public Field[,] fields;
 
     public ThereIsNoSpoon2(params string[] gameField)
@@ -59,29 +57,21 @@ public class ThereIsNoSpoon2
     {
         var obvious = takeObvious(lines);
         lines.AddRange(obvious);
-        //obvious.ForEach(line => Console.WriteLine(line.ToOutput()));
 
-        //Console.Error.WriteLine($"nehme offensichtlich: {obvious.Count}");
-        //Console.Error.WriteLine($"Nehme aus: {PossibleLines(lines).Count}");
-        //Console.Error.WriteLine($"Possible: {PossibleLines(lines).Count} \n{string.Join('\n', PossibleLines(lines))}\n --------------");*/
-
-        var linesCopy = new List<Line>(lines);
-        var firstNode = GetAllNodes().Where(node => node.FreeSlots(linesCopy) > 0).OrderBy(node => node.PossibleConnections(linesCopy).Count).FirstOrDefault();
+        var linesBefore = new List<Line>(lines);
+        var firstNode = GetAllNodes().Where(node => node.FreeSlots(linesBefore) > 0).OrderBy(node => node.PossibleConnections(linesBefore).Count).FirstOrDefault();
         if (firstNode == null)
             return SolutionWins(lines);
         foreach (var connection in firstNode.PossibleConnections(lines))
         {
             lines.Add(connection);
-            Console.Error.WriteLine($"füge {connection} bei {lines.Count}");
 
             if (!SoluationValid(lines))
                 return false;
             if (DoNextMove(ref lines))
                 return true;
 
-            lines = linesCopy;
-            //lines.ForEach(line => Console.WriteLine(line.ToOutput()));
-            Console.Error.WriteLine($"resette auf stand lines.count={lines.Count}");
+            lines = linesBefore;
         }
 
         return SolutionWins(lines);
@@ -155,12 +145,9 @@ public class ThereIsNoSpoon2
                         }
                     }
                 }
-
-
             }
 
         } while (result.Count - startSize > 0);
-        var temp = new List<Line>(result);
         result.RemoveAll(line => alreadyTaken.Contains(line));
         return result;
     }
@@ -208,7 +195,10 @@ public class ThereIsNoSpoon2
 
         //verteile maximal möglich an nachbar.falls alle nachbarn belegt sind => nehme alle
         int connextionsLeft = node.FreeSlots(alreadyTakenWithoutOwn);
-        var orderedNeighbors = node.PossibleNeighbors(alreadyTakenWithoutOwn).OrderByDescending(neighbor => neighbor.FreeSlots(alreadyTakenWithoutOwn)).ToList();
+        var orderedNeighbors = node.PossibleNeighbors(alreadyTakenWithoutOwn)
+            .OrderByDescending(neighbor => neighbor.FreeSlots(alreadyTakenWithoutOwn))
+            // notwendig für 2er, damit zuerst die größeren angeguckt werden
+            .ThenByDescending(neighbor => neighbor.symbol).ToList();
         for (int i = 0; i < orderedNeighbors.Count; i++)
         {
             var currentNeighbor = orderedNeighbors[i];
@@ -299,17 +289,6 @@ public class ThereIsNoSpoon2
             if (node.FreeSlots(lines) > neighborFreeSlots)
                 return false;
         }
-
-
-        // keine linien schneiden sich
-        /*foreach (var line in lines)
-        {
-            if (lines.Any(li => li.Intersect(line)))
-                return false;
-            if (lines.Where(li => li.EqualsIgnoreTimes(line)).Sum(li => li.times) > 2)
-                return false;
-        }*/
-
 
         return true;
     }

@@ -221,6 +221,25 @@ namespace Test
             Assertions.AssertThat(game.DoNextMove(ref lines)).IsTrue();
 
         }
+
+        [TestMethod()]
+        public void ThereIsNoSpoon2Test_Advanced2()
+        {
+            var game = new ThereIsNoSpoon2(
+                "3.....1..",
+                ".2..4..21",
+                ".3.2..1..",
+                "..2.5.3..",
+                ".3...3.3.",
+                "......2..",
+                "..2..3..3",
+                ".3..3.3..",
+                "3......44");
+
+            var lines = new List<Line>();
+            Assertions.AssertThat(game.DoNextMove(ref lines)).IsTrue();
+
+        }
         [TestMethod()]
         public void ThereIsNoSpoon2Test_multiple2()
         {
