@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Linq;
-using System.IO;
-using System.Text;
-using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Numerics;
 
 /**
@@ -59,8 +57,9 @@ public class ThereIsNoSpoon2
     public bool DoNextMove(ref List<Line> lines, Field startNode = null)
     {
         var obvious = takeObvious(lines);
-        lines.AddRange(obvious);
-        //obvious.ForEach(line => Console.WriteLine(line.ToOutput()));
+        // lines.AddRange(obvious);
+        obvious.ForEach(line => Console.WriteLine(line.ToOutput()));
+        return true;
         Console.Error.WriteLine($"nehme offensichtlich: {string.Join(';', obvious)}");
         //Console.Error.WriteLine($"Schaue {startNode}");
         if (startNode == null)
@@ -118,23 +117,30 @@ public class ThereIsNoSpoon2
 
     public List<Line> takeObvious(List<Line> alreadyTaken = null)
     {
-        List<Line> result = alreadyTaken == null ? new List<Line>() : new List<Line>(alreadyTaken);
+        if (alreadyTaken == null)
+            alreadyTaken = new List<Line>();
+        List<Line> result = new List<Line>(alreadyTaken);
         int startSize;
         do
         {
             startSize = result.Count;
             foreach (var node in GetAllNodes())
             {
+
                 if (node.FreeSlots(result) == 0)
                     continue;
-                var possibleNeighbors = node.neighbors.Where(neighbor => neighbor.FreeSlots(result) > 0);
+
+                result.AddRange(TakeSaveLines(node, result));
+                result.AddRange(TakeNeighbor2Solution(node, result));
+                result.AddRange(TakeRemainingConnectionSameAsNeighborsSum(node, result));
+
+                var possibleNeighbors = node.neighbors.Where(neighbor => neighbor.FreeSlots(result) > 0).ToList();
                 if (node.symbol == 1)
                 {
-                    possibleNeighbors = possibleNeighbors.Where(neighbor => neighbor.symbol != 1);
+                    possibleNeighbors = possibleNeighbors.Where(neighbor => neighbor.symbol != 1).ToList();
                 }
                 if (possibleNeighbors.Count() == 1)
                 {
-
                     var neighbor = possibleNeighbors.First();
                     int freeSlots = node.FreeSlots(result);
                     // verbinde 2er nicht mit 2, mit 2er nachbar
@@ -145,8 +151,7 @@ public class ThereIsNoSpoon2
                     if (freeSlots > 0)
                     {
                         var line = new Line(node, neighbor, freeSlots);
-                        if (!result.Contains(line))
-                            result.Add(line);
+                        result.Add(line);
                     }
                 }
                 else
@@ -162,12 +167,86 @@ public class ThereIsNoSpoon2
                         }
                     }
                 }
+
+
             }
+
         } while (result.Count - startSize > 0);
         var temp = new List<Line>(result);
         result.RemoveAll(line => alreadyTaken.Contains(line));
         return result;
     }
+
+    private IEnumerable<Line> TakeRemainingConnectionSameAsNeighborsSum(Field node, List<Line> result)
+    {
+        int possibleConnections = node.neighbors.Sum(neighbor => 2 - ConnectionsAlreadyTaken(result, node, neighbor));
+        int remainingConnections = node.FreeSlots(result);
+        if (possibleConnections == remainingConnections)
+        {
+            foreach (var neighbor in node.neighbors.Where(neighbor => 2 - ConnectionsAlreadyTaken(result, node, neighbor) > 0))
+            {
+                yield return new Line(node, neighbor, 2 - ConnectionsAlreadyTaken(result, node, neighbor));
+            }
+        }
+        yield break;
+    }
+
+    public IEnumerable<Line> TakeNeighbor2Solution(Field node, List<Line> alreadyTaken)
+    {
+        if (node.symbol / 2.0 == node.neighbors.Count)
+        {
+            foreach (var neighbor in node.neighbors)
+            {
+                int missingConnections = 2 - ConnectionsAlreadyTaken(alreadyTaken, node, neighbor);
+                int times = Math.Min(missingConnections, neighbor.FreeSlots(alreadyTaken));
+                if (times > 0)
+                {
+                    var connection = new Line(node, neighbor, times);
+                    yield return connection;
+                }
+            }
+        }
+        yield break;
+    }
+
+    public List<Line> TakeSaveLines(Field node, List<Line> alreadyTaken)
+    {
+        var result = new List<Line>();
+
+        var alreadyTakenWithoutOwn = alreadyTaken.Where(line => !line.a.Equals(node) && !line.b.Equals(node)).ToList();
+
+        //verteile maximal möglich an nachbar.falls alle nachbarn belegt sind => nehme alle
+        int connextionsLeft = node.FreeSlots(alreadyTakenWithoutOwn);
+        var orderedNeighbors = node.neighbors.Where(neighbor => neighbor.FreeSlots(alreadyTakenWithoutOwn) > 0).OrderByDescending(neighbor => neighbor.symbol).ToList();
+        for (int i = 0; i < orderedNeighbors.Count; i++)
+        {
+            var currentNeighbor = orderedNeighbors[i];
+            //sonderfall beachten 2er dürfen 2er nur mit 1 besuchen
+            if (node.symbol == 2 && currentNeighbor.symbol == 2)
+                connextionsLeft -= 1;
+            else
+                connextionsLeft -= Math.Min(2, currentNeighbor.FreeSlots(alreadyTakenWithoutOwn));
+            if (connextionsLeft <= 0)
+            {
+                if (i == node.neighbors.Count - 1)
+                {
+                    foreach (var neighbor in node.neighbors)
+                    {
+                        //  was ist hier mit duplikaten? wie erkennen, dass
+                        var connection = new Line(node, neighbor, 1);
+                        if (ConnectionsAlreadyTaken(alreadyTaken, node, neighbor) < 1)
+                            result.Add(new Line(node, neighbor, 1));
+                    }
+                }
+                break;
+            }
+        }
+
+        Console.Error.WriteLine($"schaue {node} und nehme {string.Join(',', result)}");
+
+        return result;
+    }
+
 
     public bool SolutionWins(List<Line> lines)
     {
@@ -268,6 +347,11 @@ public class ThereIsNoSpoon2
         }
         return allNodes;
     }
+
+    private static int ConnectionsAlreadyTaken(List<Line> connections, Field a, Field b)
+    {
+        return connections.Where(line => line.EqualsIgnoreTimes(new Line(a, b, 1))).Sum(line => line.times);
+    }
 }
 
 public class Field
@@ -318,14 +402,21 @@ public class Field
                     continue;
 
                 var connection = new Line(this, neighbor, 1);
-                if (!connection.IntersectAny(lines) && !lines.Contains(connection))
+                int connectionsAlreadyInUse = lines.Where(line => line.EqualsIgnoreTimes(connection)).Sum(line => line.times);
+
+                if (!connection.IntersectAny(lines))
                 {
+                    if (this.symbol == 2 && neighbor.symbol == 2 && connectionsAlreadyInUse > 0)
+                    {
+                        continue;
+                    }
                     result.Add(connection);
                     if (this.symbol == 2 && neighbor.symbol == 2)
                         continue;
                     if (this.FreeSlots(lines) > 1 && neighbor.FreeSlots(lines) > 1)
                     {
-                        result.Add(new Line(this, neighbor, 2));
+                        if (connectionsAlreadyInUse == 0)
+                            result.Add(new Line(this, neighbor, 2));
                     }
                 }
             }

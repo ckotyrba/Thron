@@ -142,6 +142,34 @@ namespace Test
 
         }
 
+        [TestMethod()]
+        public void takeObvious_nachbarOverflowImmerNehmen()
+        {
+            var game = new ThereIsNoSpoon2(
+                "332",
+                "2.2"
+                );
+
+
+            var lines = new List<Line>();
+            Assertions.AssertThat(game.SolutionWins(game.takeObvious())).IsTrue();
+
+        }
+        [TestMethod()]
+        public void takeObvious_2erNichtDoppelt()
+        {
+            var game = new ThereIsNoSpoon2(
+                "122",
+                "122"
+                );
+
+
+            var lines = new List<Line>();
+            Assertions.AssertThat(game.SolutionWins(game.takeObvious())).IsTrue();
+
+        }
+
+
 
 
         [TestMethod()]
@@ -153,6 +181,21 @@ namespace Test
                 ".2.1...",
                 "2...2..",
                 ".1....2");
+
+
+            var lines = new List<Line>();
+            Assertions.AssertThat(game.DoNextMove(ref lines)).IsTrue();
+
+        }   
+        
+        [TestMethod()]
+        public void ThereIsNoSpoon2Test_Fortgeschritten3()
+        {
+            var game = new ThereIsNoSpoon2(
+                "25.1",
+                "47.4",
+                "..1.",
+                "3344");
 
 
             var lines = new List<Line>();
@@ -224,13 +267,43 @@ namespace Test
             Assertions.AssertThat(game.fields[0, 0].PossibleConnections(new List<Line>())).HasSize(1);
         }
 
+
+        [TestMethod()]
+        public void possibleConnections_schonvorhanden()
+        {
+            var game = new ThereIsNoSpoon2(
+                "12");
+            Assertions.AssertThat(game.fields[0, 0].PossibleConnections(new List<Line>() { new Line(game.fields[0, 0], game.fields[1, 0], 1) })).HasSize(0);
+        }
+
         [TestMethod()]
         public void possibleConnections_double()
         {
             var game = new ThereIsNoSpoon2(
                 "22");
-            Assertions.AssertThat(game.fields[0, 0].PossibleConnections(new List<Line>())).HasSize(2);
+            // 2 darf nicht mit anderer 2 doppelt verbunden sein
+            Assertions.AssertThat(game.fields[0, 0].PossibleConnections(new List<Line>())).HasSize(1);
         }
+
+        [TestMethod()]
+        public void possibleConnections_doubleNotAllowed()
+        {
+            var game = new ThereIsNoSpoon2(
+                "22");
+            // 2 darf nicht mit anderer 2 doppelt verbunden sein
+            Assertions.AssertThat(game.fields[0, 0].PossibleConnections(new List<Line>() { new Line(game.fields[0, 0], game.fields[1, 0], 1) })).HasSize(0);
+        }
+
+        [TestMethod()]
+        public void possibleConnections_doubleNochZugelassen()
+        {
+            var game = new ThereIsNoSpoon2(
+                "33");
+            // 2 darf nicht mit anderer 2 doppelt verbunden sein
+            Assertions.AssertThat(game.fields[0, 0].PossibleConnections(new List<Line>() { new Line(game.fields[0, 0], game.fields[1, 0], 1) })).HasSize(1);
+            Assertions.AssertThat(game.fields[0, 0].PossibleConnections(new List<Line>() { new Line(game.fields[0, 0], game.fields[1, 0], 2) })).HasSize(1);
+        }
+
 
         [TestMethod()]
         public void possibleConnections_7()
@@ -248,7 +321,7 @@ namespace Test
             var game = new ThereIsNoSpoon2(
                 ".1.",
                 "2.1",
-                "21.");
+                "31.");
             Assertions.AssertThat(game.fields[0, 2].PossibleConnections(new List<Line>() { new Line(game.fields[1, 0], game.fields[1, 2]) })).HasSize(2);
         }
 
@@ -258,7 +331,7 @@ namespace Test
             var game = new ThereIsNoSpoon2(
                 ".1.",
                 "2.1",
-                "21.");
+                "31.");
             Assertions.AssertThat(game.fields[0, 2].PossibleConnections(new List<Line>())).HasSize(3);
         }
 
@@ -290,6 +363,70 @@ namespace Test
                 "2.");
             var line32 = new Line(game.fields[0, 0], game.fields[0, 1], 1);
             Assertions.AssertThat(game.fields[0, 0].PossibleConnections(new List<Line>() { line32 })).HasSize(2);
+        }
+
+        [TestMethod()]
+        public void TakeSaveLinesTest_keinerMöglich()
+        {
+
+            var game = new ThereIsNoSpoon2(
+                "132",
+                ".1.");
+
+            Assertions.AssertThat(game.TakeSaveLines(game.fields[1, 0], new List<Line>())).IsEmpty();
+        }
+
+
+        [TestMethod()]
+        public void TakeSaveLinesTest_nehme()
+        {
+
+            var game = new ThereIsNoSpoon2(
+                "132");
+
+            Assertions.AssertThat(game.TakeSaveLines(game.fields[1, 0], new List<Line>())).HasSize(2);
+        }
+
+
+        [TestMethod()]
+        public void TakeSaveLinesTest_keineDoppelten()
+        {
+
+            var game = new ThereIsNoSpoon2(
+                "132");
+
+            Assertions.AssertThat(game.TakeSaveLines(game.fields[1, 0], new List<Line>() { new Line(game.fields[0, 0], game.fields[1, 0], 2) })).HasSize(1);
+        }
+
+
+        [TestMethod()]
+        public void TakeSaveLinesTest_FangeBeiGroßAn()
+        {
+
+            var game = new ThereIsNoSpoon2(
+                "124");
+
+            Assertions.AssertThat(game.TakeSaveLines(game.fields[1, 0], new List<Line>())).HasSize(0);
+        }
+
+        [TestMethod()]
+        public void TakeSaveLinesTest_2erSonderfall()
+        {
+
+            var game = new ThereIsNoSpoon2(
+                "222");
+
+            Assertions.AssertThat(game.TakeSaveLines(game.fields[1, 0], new List<Line>())).HasSize(2);
+        }
+
+        [TestMethod()]
+        public void TakeNeighbor2SolutionTest()
+        {
+            var game = new ThereIsNoSpoon2(
+              ".2",
+              "24");
+
+            Assertions.AssertThat(game.TakeNeighbor2Solution(game.fields[1, 1], new List<Line>())).HasSize(2);
         }
     }
 
